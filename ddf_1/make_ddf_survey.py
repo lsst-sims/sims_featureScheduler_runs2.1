@@ -4,8 +4,8 @@ from gurobipy import GRB
 import scipy.sparse as sp
 from scipy.stats import binned_statistic
 import matplotlib.pylab as plt
-from rubin_sim.utils import calcSeason
-from rubin_sim.utils import ddf_locations
+from rubin_sim.utils import calcSeason, ddf_locations
+from rubin_sim.scheduler.utils import scheduled_observation
 
 
 def optimize_ddf_times(ddf_name, ddf_RA, ddf_grid,
@@ -24,7 +24,6 @@ def optimize_ddf_times(ddf_name, ddf_RA, ddf_grid,
     season_frac : `float`
         7.2 month observing season if season_frac = 0.2
     """
-
     sun_limit = np.radians(sun_limit)
 
     # XXX-- double check that I got this right
@@ -45,11 +44,11 @@ def optimize_ddf_times(ddf_name, ddf_RA, ddf_grid,
     sun_mask[np.where(ddf_grid['sun_alt'] >= sun_limit)] = 1
 
     airmass_mask = np.zeros(ngrid, dtype=bool)
-    airmass_mask[np.where(ddf_grid['ELAISS1_airmass'] >= airmass_limit)] = 1
+    airmass_mask[np.where(ddf_grid['%s_airmass' % ddf_name] >= airmass_limit)] = 1
 
     sky_mask = np.zeros(ngrid, dtype=bool)
-    sky_mask[np.where(ddf_grid['ELAISS1_sky_g'] <= sky_limit)] = 1
-    sky_mask[np.where(np.isnan(ddf_grid['ELAISS1_sky_g']) == True)] = 1
+    sky_mask[np.where(ddf_grid['%s_sky_g' % ddf_name] <= sky_limit)] = 1
+    sky_mask[np.where(np.isnan(ddf_grid['%s_sky_g' % ddf_name]) == True)] = 1
 
     # Let's add the constraints
     m.addConstr(schedule @ sun_mask == 0)
@@ -116,12 +115,58 @@ def optimize_ddf_times(ddf_name, ddf_RA, ddf_grid,
     return mjds
 
 
-if __name__ == "__main__":
+def generate_ddf_scheduled_obs(data_file='ddf_grid.npz', flush_length=2, mjd_tol=15, expt=30.,
+                               alt_min=20, alt_max=85, HA_min=21., HA_max=3.,
+                               dist_tol=3., solver_time_limit=30):
+
+    flush_length = flush_length  # days
+    mjd_tol = mjd_tol/60/24.  # minutes to days
+    expt = expt
+    alt_min = np.radians(alt_min)
+    alt_max = np.radians(alt_max)
+    dist_tol = np.radians(dist_tol)
+
     ddfs = ddf_locations()
-    ddf_data = np.load('ddf_grid.npz')
+    ddf_data = np.load(data_file)
     ddf_grid = ddf_data['ddf_grid'].copy()
 
     ddf_name = 'ECDFS'
 
-    mjds = optimize_ddf_times(ddf_name, ddfs[ddf_name][0], ddf_grid, time_limit=30)
-    import pdb ; pdb.set_trace()
+    # number of visits for each filter
+    filters = 'ugrizy'
+    nvis_master = [8, 20, 10, 20, 26, 20]
+    nsnaps = [1, 2, 2, 2, 2, 2]
+
+    # 'ID', 'RA', 'dec', 'mjd', 'flush_by_mjd', 'exptime', 'filter', 'rotSkyPos', 'nexp',
+    #         'note'
+    # 'mjd_tol', 'dist_tol', 'alt_min', 'alt_max', 'HA_max', 'HA_min', 'observed'
+    mjds = optimize_ddf_times(ddf_name, ddfs[ddf_name][0], ddf_grid, time_limit=solver_time_limit)
+    all_scheduled_obs = []
+    for mjd in mjds:
+        for filtername, nvis, nexp in zip(filters, nvis_master, nsnaps):
+            obs = scheduled_observation(n=nvis)
+            obs['RA'] = np.radians(ddfs[ddf_name][0])
+            obs['dec'] = np.radians(ddfs[ddf_name][1])
+            obs['mjd'] = mjd
+            obs['flush_by_mjd'] = mjd + flush_length
+            obs['exptime'] = expt
+            obs['filter'] = filtername
+            obs['nexp'] = nexp
+            obs['note'] = 'DD:%s' % ddf_name
+
+            obs['mjd_tol'] = mjd_tol
+            obs['dist_tol'] = dist_tol
+            # Need to set something for HA limits
+            obs['HA_min'] = HA_min
+            obs['HA_max'] = HA_max
+            obs['alt_min'] = alt_min
+            obs['alt_max'] = alt_max
+            all_scheduled_obs.append(obs)
+
+    result = np.concatenate(all_scheduled_obs)
+    return result
+
+
+if __name__ == '__main__':
+    obs_array = generate_ddf_scheduled_obs()
+    np.savez('ddf_1.npz', obs_array=obs_array)

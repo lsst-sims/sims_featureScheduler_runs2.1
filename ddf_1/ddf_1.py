@@ -8,14 +8,14 @@ from rubin_sim.scheduler.schedulers import Core_scheduler, simple_filter_sched
 from rubin_sim.scheduler.utils import (Sky_area_generator,
                                        make_rolling_footprints)
 import rubin_sim.scheduler.basis_functions as bf
-from rubin_sim.scheduler.surveys import (Greedy_survey, generate_dd_surveys,
-                                         Blob_survey)
+from rubin_sim.scheduler.surveys import (Greedy_survey, Blob_survey, Scripted_survey)
 from rubin_sim.scheduler import sim_runner
 import rubin_sim.scheduler.detailers as detailers
 import sys
 import subprocess
 import os
 import argparse
+from make_ddf_survey import generate_ddf_scheduled_obs
 
 
 def gen_greedy_surveys(nside=32, nexp=2, exptime=30., filters=['r', 'i', 'z', 'y'],
@@ -409,6 +409,16 @@ def run_sched(surveys, survey_length=365.25, nside=32, fileroot='baseline_', ver
                                                       filter_scheduler=filter_sched)
 
 
+def ddf_surveys(detailers=None):
+    #obs_array = generate_ddf_scheduled_obs()
+    data = np.load('ddf_1.npz')
+    obs_array = data['obs_array'].copy()
+    survey = Scripted_survey([], detailers=detailers)
+    survey.set_script(obs_array)
+    return [survey]
+
+
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
@@ -485,7 +495,8 @@ if __name__ == "__main__":
                dither_detailer, u_detailer]
     euclid_detailers = [detailers.Camera_rot_detailer(min_rot=-camera_ddf_rot_limit, max_rot=camera_ddf_rot_limit),
                         detailers.Euclid_dither_detailer(), u_detailer]
-    ddfs = generate_dd_surveys(nside=nside, nexp=nexp, detailers=details, euclid_detailers=euclid_detailers)
+    #ddfs = generate_dd_surveys(nside=nside, nexp=nexp, detailers=details, euclid_detailers=euclid_detailers)
+    ddfs = ddf_surveys(detailers=details)
 
     greedy = gen_greedy_surveys(nside, nexp=nexp, footprints=footprints)
 
