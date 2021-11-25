@@ -439,6 +439,7 @@ if __name__ == "__main__":
     parser.add_argument("--rolling_nslice", type=int, default=2)
     parser.add_argument("--rolling_strength", type=float, default=0.9)
     parser.add_argument("--dbroot", type=str)
+    parser.add_argument("--gsw", type=float, default=3.0)
 
     args = parser.parse_args()
     survey_length = args.survey_length  # Days
@@ -450,6 +451,7 @@ if __name__ == "__main__":
     nslice = args.rolling_nslice
     scale = args.rolling_strength
     dbroot = args.dbroot
+    gsw = args.gsw
 
     nside = 32
     per_night = True  # Dither DDF per night
@@ -473,7 +475,7 @@ if __name__ == "__main__":
         fileroot = os.path.basename(sys.argv[0]).replace('.py', '') + '_'
     else:
         fileroot = dbroot + '_'
-    file_end = 'v2.1_'
+    file_end = 'gsw%.1f_v2.1_' % gsw
 
     sm = Sky_area_generator(nside=nside)
 
@@ -506,7 +508,7 @@ if __name__ == "__main__":
 
     greedy = gen_greedy_surveys(nside, nexp=nexp, footprints=footprints)
 
-    blobs = generate_blobs(nside, nexp=nexp, footprints=footprints, mjd_start=conditions.mjd_start)
+    blobs = generate_blobs(nside, nexp=nexp, footprints=footprints, mjd_start=conditions.mjd_start, good_seeing_weight=gsw)
     twi_blobs = generate_twi_blobs(nside, nexp=nexp,
                                    footprints=footprints,
                                    wfd_footprint=wfd_footprint,
