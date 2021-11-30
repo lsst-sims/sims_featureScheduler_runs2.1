@@ -15,7 +15,6 @@ import sys
 import subprocess
 import os
 import argparse
-from make_ddf_survey import generate_ddf_scheduled_obs
 
 
 def gen_greedy_surveys(nside=32, nexp=2, exptime=30., filters=['r', 'i', 'z', 'y'],
@@ -495,7 +494,6 @@ if __name__ == "__main__":
                dither_detailer, u_detailer]
     euclid_detailers = [detailers.Camera_rot_detailer(min_rot=-camera_ddf_rot_limit, max_rot=camera_ddf_rot_limit),
                         detailers.Euclid_dither_detailer(), u_detailer]
-    #ddfs = generate_dd_surveys(nside=nside, nexp=nexp, detailers=details, euclid_detailers=euclid_detailers)
     ddfs = ddf_surveys(detailers=details)
 
     greedy = gen_greedy_surveys(nside, nexp=nexp, footprints=footprints)

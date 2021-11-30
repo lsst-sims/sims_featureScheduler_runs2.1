@@ -9,7 +9,7 @@ from rubin_sim.scheduler.utils import scheduled_observation
 
 
 def optimize_ddf_times(ddf_name, ddf_RA, ddf_grid,
-                       sun_limit=-18, airmass_limit=2.1, sky_limit=22,
+                       sun_limit=-18, airmass_limit=2.1, sky_limit=21.75,
                        sequence_limit=400, season_frac=0.2,
                        time_limit=200):
     """Run gyrobi to optimize the times of a ddf
@@ -117,7 +117,7 @@ def optimize_ddf_times(ddf_name, ddf_RA, ddf_grid,
 
 def generate_ddf_scheduled_obs(data_file='ddf_grid.npz', flush_length=2, mjd_tol=15, expt=30.,
                                alt_min=25, alt_max=85, HA_min=21., HA_max=3.,
-                               dist_tol=3., solver_time_limit=30):
+                               dist_tol=3., solver_time_limit=200):
 
     flush_length = flush_length  # days
     mjd_tol = mjd_tol/60/24.  # minutes to days
@@ -130,38 +130,80 @@ def generate_ddf_scheduled_obs(data_file='ddf_grid.npz', flush_length=2, mjd_tol
     ddf_data = np.load(data_file)
     ddf_grid = ddf_data['ddf_grid'].copy()
 
-    ddf_name = 'ECDFS'
-
     # number of visits for each filter
     filters = 'ugrizy'
     nvis_master = [8, 20, 10, 20, 26, 20]
     nsnaps = [1, 2, 2, 2, 2, 2]
 
-    # 'ID', 'RA', 'dec', 'mjd', 'flush_by_mjd', 'exptime', 'filter', 'rotSkyPos', 'nexp',
-    #         'note'
-    # 'mjd_tol', 'dist_tol', 'alt_min', 'alt_max', 'HA_max', 'HA_min', 'observed'
-    mjds = optimize_ddf_times(ddf_name, ddfs[ddf_name][0], ddf_grid, time_limit=solver_time_limit)
     all_scheduled_obs = []
-    for mjd in mjds:
-        for filtername, nvis, nexp in zip(filters, nvis_master, nsnaps):
-            obs = scheduled_observation(n=nvis)
-            obs['RA'] = np.radians(ddfs[ddf_name][0])
-            obs['dec'] = np.radians(ddfs[ddf_name][1])
-            obs['mjd'] = mjd
-            obs['flush_by_mjd'] = mjd + flush_length
-            obs['exptime'] = expt
-            obs['filter'] = filtername
-            obs['nexp'] = nexp
-            obs['note'] = 'DD:%s' % ddf_name
+    for ddf_name in ['ELAISS1', 'XMM_LSS', 'ECDFS', 'COSMOS', 'EDFS_a']:
+        print('Optimizing %s' % ddf_name)
 
-            obs['mjd_tol'] = mjd_tol
-            obs['dist_tol'] = dist_tol
-            # Need to set something for HA limits
-            obs['HA_min'] = HA_min
-            obs['HA_max'] = HA_max
-            obs['alt_min'] = alt_min
-            obs['alt_max'] = alt_max
-            all_scheduled_obs.append(obs)
+        # 'ID', 'RA', 'dec', 'mjd', 'flush_by_mjd', 'exptime', 'filter', 'rotSkyPos', 'nexp',
+        #         'note'
+        # 'mjd_tol', 'dist_tol', 'alt_min', 'alt_max', 'HA_max', 'HA_min', 'observed'
+        mjds = optimize_ddf_times(ddf_name, ddfs[ddf_name][0], ddf_grid, time_limit=solver_time_limit)
+        for mjd in mjds:
+            for filtername, nvis, nexp in zip(filters, nvis_master, nsnaps):
+                if 'EDFS' in ddf_name:
+                    obs = scheduled_observation(n=int(nvis/2))
+                    obs['RA'] = np.radians(ddfs[ddf_name][0])
+                    obs['dec'] = np.radians(ddfs[ddf_name][1])
+                    obs['mjd'] = mjd
+                    obs['flush_by_mjd'] = mjd + flush_length
+                    obs['exptime'] = expt
+                    obs['filter'] = filtername
+                    obs['nexp'] = nexp
+                    obs['note'] = 'DD:%s' % ddf_name
+
+                    obs['mjd_tol'] = mjd_tol
+                    obs['dist_tol'] = dist_tol
+                    # Need to set something for HA limits
+                    obs['HA_min'] = HA_min
+                    obs['HA_max'] = HA_max
+                    obs['alt_min'] = alt_min
+                    obs['alt_max'] = alt_max
+                    all_scheduled_obs.append(obs)
+
+                    obs = scheduled_observation(n=int(nvis/2))
+                    obs['RA'] = np.radians(ddfs[ddf_name.replace('_a', '_b')][0])
+                    obs['dec'] = np.radians(ddfs[ddf_name.replace('_a', '_b')][1])
+                    obs['mjd'] = mjd
+                    obs['flush_by_mjd'] = mjd + flush_length
+                    obs['exptime'] = expt
+                    obs['filter'] = filtername
+                    obs['nexp'] = nexp
+                    obs['note'] = 'DD:%s' % ddf_name.replace('_a', '_b')
+
+                    obs['mjd_tol'] = mjd_tol
+                    obs['dist_tol'] = dist_tol
+                    # Need to set something for HA limits
+                    obs['HA_min'] = HA_min
+                    obs['HA_max'] = HA_max
+                    obs['alt_min'] = alt_min
+                    obs['alt_max'] = alt_max
+                    all_scheduled_obs.append(obs)
+
+                else:
+
+                    obs = scheduled_observation(n=nvis)
+                    obs['RA'] = np.radians(ddfs[ddf_name][0])
+                    obs['dec'] = np.radians(ddfs[ddf_name][1])
+                    obs['mjd'] = mjd
+                    obs['flush_by_mjd'] = mjd + flush_length
+                    obs['exptime'] = expt
+                    obs['filter'] = filtername
+                    obs['nexp'] = nexp
+                    obs['note'] = 'DD:%s' % ddf_name
+
+                    obs['mjd_tol'] = mjd_tol
+                    obs['dist_tol'] = dist_tol
+                    # Need to set something for HA limits
+                    obs['HA_min'] = HA_min
+                    obs['HA_max'] = HA_max
+                    obs['alt_min'] = alt_min
+                    obs['alt_max'] = alt_max
+                    all_scheduled_obs.append(obs)
 
     result = np.concatenate(all_scheduled_obs)
     return result
