@@ -6,12 +6,13 @@ from scipy.stats import binned_statistic
 import matplotlib.pylab as plt
 from rubin_sim.utils import calcSeason, ddf_locations
 from rubin_sim.scheduler.utils import scheduled_observation
+import os
 
 
 def optimize_ddf_times(ddf_name, ddf_RA, ddf_grid,
                        sun_limit=-18, airmass_limit=2.1, sky_limit=21.75,
-                       sequence_limit=400, season_frac=0.2,
-                       time_limit=200):
+                       sequence_limit=286, season_frac=0.2,
+                       time_limit=200, plot_dir='ddf_plots'):
     """Run gyrobi to optimize the times of a ddf
 
     Parameters
@@ -111,6 +112,49 @@ def optimize_ddf_times(ddf_name, ddf_RA, ddf_grid,
         # we could intorpolate this to get even better than 15 min resolution on when to observe
         max_indx = np.where(m5s == m5s.max())[0].min()
         mjds.append(ddf_grid['mjd'][in_night[max_indx]])
+
+    # Maybe make some optional plots to check things.
+    if plot_dir is not None:
+
+        sub_night = 365*1.5
+
+        fig, (ax1, ax2) = plt.subplots(1, 2)
+        ax1.plot(ddf_grid['mjd'], ddf_grid['%s_m5_g' % ddf_name])
+        _temp, indx1, indx2 = np.intersect1d(mjds, ddf_grid['mjd'], return_indices=True)
+        ax1.plot(mjds, ddf_grid['%s_m5_g' % ddf_name][indx2], 'ko')
+        ax1.set_xlabel('MJD')
+        ax1.set_ylabel('5-sigme depth (mags)')
+        ax1.set_title(ddf_name)
+
+        ax2.plot(ddf_grid['mjd'], ddf_grid['%s_m5_g' % ddf_name])
+        ax2.plot(mjds, ddf_grid['%s_m5_g' % ddf_name][indx2], 'ko')
+        mjd_start = np.min(mjds)
+        ax2.set_xlim(mjd_start, mjd_start + sub_night)
+        ax2.set_xlabel('MJD')
+        ax2.set_ylabel('5-sigme depth (mags)')
+        ax2.set_title(ddf_name)
+
+        fig.tight_layout()
+
+        fig.savefig(os.path.join(plot_dir, ddf_name + '_p1.pdf'))
+
+        fig, (ax1, ax2) = plt.subplots(1, 2)
+
+        ax1.plot(cumulative_sched.X)
+        ax1.plot(cumulative_desired)
+        ax1.set_xlabel('Night')
+        ax1.set_ylabel('Cumulative nuumber of events')
+        ax1.set_title(ddf_name)
+
+        good = np.where(unights < sub_night)
+        ax2.plot(cumulative_sched.X[good])
+        ax2.plot(cumulative_desired[good])
+        ax2.set_xlabel('Night')
+        ax2.set_ylabel('Cumulative nuumber of events')
+        ax2.set_title(ddf_name)
+
+        fig.tight_layout()
+        fig.savefig(os.path.join(plot_dir, ddf_name + '_p2.pdf'))
 
     return mjds
 
