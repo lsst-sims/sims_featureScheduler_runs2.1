@@ -101,7 +101,8 @@ def generate_blobs(nside, nexp=2, exptime=30., filter1s=['u', 'u', 'g', 'r', 'i'
                    shadow_minutes=60., max_alt=76., moon_distance=30., ignore_obs='DD',
                    m5_weight=6., footprint_weight=1.5, slewtime_weight=3.,
                    stayfilter_weight=3., template_weight=12., footprints=None, u_nexp1=True,
-                   scheduled_respect=45.):
+                   scheduled_respect=45., good_seeing={'g': 3, 'r': 3, 'i': 3}, good_seeing_weight=3.,
+                   mjd_start=1):
     """
     Generate surveys that take observations in blobs.
 
@@ -209,6 +210,22 @@ def generate_blobs(nside, nexp=2, exptime=30., filter1s=['u', 'u', 'g', 'r', 'i'
                                                          n_obs=n_obs_template, season=season,
                                                          season_start_hour=season_start_hour,
                                                          season_end_hour=season_end_hour), template_weight))
+
+        # Insert things for getting good seeing templates
+        if filtername2 is not None:
+            if filtername in list(good_seeing.keys()):
+                bfs.append((bf.N_good_seeing_basis_function(filtername=filtername, nside=nside, mjd_start=mjd_start,
+                                                            footprint=footprints.get_footprint(filtername),
+                                                            n_obs_desired=good_seeing[filtername]), good_seeing_weight))
+            if filtername2 in list(good_seeing.keys()):
+                bfs.append((bf.N_good_seeing_basis_function(filtername=filtername2, nside=nside, mjd_start=mjd_start,
+                                                            footprint=footprints.get_footprint(filtername2),
+                                                            n_obs_desired=good_seeing[filtername2]), good_seeing_weight))
+        else:
+            if filtername in list(good_seeing.keys()):
+                bfs.append((bf.N_good_seeing_basis_function(filtername=filtername, nside=nside, mjd_start=mjd_start,
+                                                            footprint=footprints.get_footprint(filtername),
+                                                            n_obs_desired=good_seeing[filtername]), good_seeing_weight))
         # Make sure we respect scheduled observations
         bfs.append((bf.Time_to_scheduled_basis_function(time_needed=scheduled_respect), 0))
         # Masks, give these 0 weight
@@ -422,6 +439,7 @@ if __name__ == "__main__":
     parser.add_argument("--rolling_nslice", type=int, default=2)
     parser.add_argument("--rolling_strength", type=float, default=0.9)
     parser.add_argument("--dbroot", type=str)
+    parser.add_argument("--gsw", type=float, default=3.0)
 
     args = parser.parse_args()
     survey_length = args.survey_length  # Days
@@ -433,6 +451,7 @@ if __name__ == "__main__":
     nslice = args.rolling_nslice
     scale = args.rolling_strength
     dbroot = args.dbroot
+    gsw = args.gsw
 
     nside = 32
     per_night = True  # Dither DDF per night
@@ -456,7 +475,7 @@ if __name__ == "__main__":
         fileroot = os.path.basename(sys.argv[0]).replace('.py', '') + '_'
     else:
         fileroot = dbroot + '_'
-    file_end = 'v2.1_'
+    file_end = '_v2.1_'
 
     sm = Sky_area_generator(nside=nside)
 
@@ -489,7 +508,7 @@ if __name__ == "__main__":
 
     greedy = gen_greedy_surveys(nside, nexp=nexp, footprints=footprints)
 
-    blobs = generate_blobs(nside, nexp=nexp, footprints=footprints)
+    blobs = generate_blobs(nside, nexp=nexp, footprints=footprints, mjd_start=conditions.mjd_start, good_seeing_weight=gsw)
     twi_blobs = generate_twi_blobs(nside, nexp=nexp,
                                    footprints=footprints,
                                    wfd_footprint=wfd_footprint,
