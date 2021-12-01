@@ -48,6 +48,7 @@
 ## Set up the evironment
 source ~/anaconda3/etc/profile.d/conda.sh
 conda activate guro
+export GRB_LICENSE_FILE="/usr/lusers/yoachim/license_files/gurobi.lic"
 
 cd /gscratch/scrubbed/yoachim/sims_featureScheduler_runs2.1/ddf_1
 
