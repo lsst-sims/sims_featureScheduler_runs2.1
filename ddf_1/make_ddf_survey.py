@@ -13,7 +13,7 @@ import argparse
 def optimize_ddf_times(ddf_name, ddf_RA, ddf_grid,
                        sun_limit=-18, airmass_limit=2.1, sky_limit=21.75,
                        sequence_limit=286, season_frac=0.2,
-                       time_limit=200, plot_dir=None):
+                       time_limit=200, plot_dir=None, threads=2):
     """Run gyrobi to optimize the times of a ddf
 
     Parameters
@@ -100,6 +100,7 @@ def optimize_ddf_times(ddf_name, ddf_RA, ddf_grid,
     # then it's easier to do more than one simultaneously.
     m.setObjective(cumulative_diff@cumulative_diff, GRB.MINIMIZE)
     m.Params.TimeLimit = time_limit
+    m.Params.Threads = threads
     m.optimize()
     result_array = schedule.X
 
