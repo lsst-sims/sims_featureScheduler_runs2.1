@@ -13,7 +13,7 @@ import argparse
 def optimize_ddf_times(ddf_name, ddf_RA, ddf_grid,
                        sun_limit=-18, airmass_limit=2.1, sky_limit=21.75,
                        sequence_limit=286, season_frac=0.2,
-                       time_limit=200, plot_dir=None, threads=2):
+                       time_limit=30, plot_dir=None, threads=2):
     """Run gyrobi to optimize the times of a ddf
 
     Parameters
@@ -70,7 +70,8 @@ def optimize_ddf_times(ddf_name, ddf_RA, ddf_grid,
     for i, n in enumerate(unights):
         in_night = np.where(night == n)[0]
         m.addConstr(schedule[in_night]@schedule[in_night] <= 1)
-        m.addConstr(sched_night[i] == schedule[in_night].sum())
+        # Need to index this weird now to make it return an MVar instead of Var
+        m.addConstr(sched_night[i:i+1] == schedule[in_night].sum())
 
     raw_obs = np.ones(unights.size)
     # take out the ones that are out of season
@@ -92,6 +93,7 @@ def optimize_ddf_times(ddf_name, ddf_RA, ddf_grid,
     m.addConstr(cumulative_diff[0] == cumulative_sched[0] - cumulative_desired[0])
 
     for i in np.arange(1, unights.size):
+
         m.addConstr(cumulative_sched[i] == cumulative_sched[i-1]+sched_night[i])
         m.addConstr(cumulative_diff[i] == cumulative_sched[i] - cumulative_desired[i])
 
@@ -125,7 +127,7 @@ def optimize_ddf_times(ddf_name, ddf_RA, ddf_grid,
         _temp, indx1, indx2 = np.intersect1d(mjds, ddf_grid['mjd'], return_indices=True)
         ax1.plot(mjds, ddf_grid['%s_m5_g' % ddf_name][indx2], 'ko')
         ax1.set_xlabel('MJD')
-        ax1.set_ylabel('5-sigme depth (mags)')
+        ax1.set_ylabel('5-sigma depth (mags)')
         ax1.set_title(ddf_name)
 
         ax2.plot(ddf_grid['mjd'], ddf_grid['%s_m5_g' % ddf_name])
@@ -133,7 +135,7 @@ def optimize_ddf_times(ddf_name, ddf_RA, ddf_grid,
         mjd_start = np.min(mjds)
         ax2.set_xlim(mjd_start, mjd_start + sub_night)
         ax2.set_xlabel('MJD')
-        ax2.set_ylabel('5-sigme depth (mags)')
+        ax2.set_ylabel('5-sigma depth (mags)')
         ax2.set_title(ddf_name)
 
         fig.tight_layout()
@@ -264,6 +266,7 @@ if __name__ == '__main__':
     parser.add_argument("--season_frac", type=float, default=0.2)
     args = parser.parse_args()
     filename = args.out_file
+    season_frac = args.season_frac
 
-    obs_array = generate_ddf_scheduled_obs()
+    obs_array = generate_ddf_scheduled_obs(plot_dir='ddf_plots', season_frac=season_frac)
     np.savez(filename, obs_array=obs_array)
