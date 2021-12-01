@@ -7,12 +7,13 @@ import matplotlib.pylab as plt
 from rubin_sim.utils import calcSeason, ddf_locations
 from rubin_sim.scheduler.utils import scheduled_observation
 import os
+import argparse
 
 
 def optimize_ddf_times(ddf_name, ddf_RA, ddf_grid,
                        sun_limit=-18, airmass_limit=2.1, sky_limit=21.75,
                        sequence_limit=286, season_frac=0.2,
-                       time_limit=200, plot_dir='ddf_plots'):
+                       time_limit=200, plot_dir=None):
     """Run gyrobi to optimize the times of a ddf
 
     Parameters
@@ -161,7 +162,8 @@ def optimize_ddf_times(ddf_name, ddf_RA, ddf_grid,
 
 def generate_ddf_scheduled_obs(data_file='ddf_grid.npz', flush_length=2, mjd_tol=15, expt=30.,
                                alt_min=25, alt_max=85, HA_min=21., HA_max=3.,
-                               dist_tol=3., solver_time_limit=200):
+                               dist_tol=3., solver_time_limit=200, season_frac=0.2,
+                               plot_dir=None):
 
     flush_length = flush_length  # days
     mjd_tol = mjd_tol/60/24.  # minutes to days
@@ -186,7 +188,8 @@ def generate_ddf_scheduled_obs(data_file='ddf_grid.npz', flush_length=2, mjd_tol
         # 'ID', 'RA', 'dec', 'mjd', 'flush_by_mjd', 'exptime', 'filter', 'rotSkyPos', 'nexp',
         #         'note'
         # 'mjd_tol', 'dist_tol', 'alt_min', 'alt_max', 'HA_max', 'HA_min', 'observed'
-        mjds = optimize_ddf_times(ddf_name, ddfs[ddf_name][0], ddf_grid, time_limit=solver_time_limit)
+        mjds = optimize_ddf_times(ddf_name, ddfs[ddf_name][0], ddf_grid, time_limit=solver_time_limit,
+                                  season_frac=season_frac, plot_dir=plot_dir)
         for mjd in mjds:
             for filtername, nvis, nexp in zip(filters, nvis_master, nsnaps):
                 if 'EDFS' in ddf_name:
@@ -254,5 +257,12 @@ def generate_ddf_scheduled_obs(data_file='ddf_grid.npz', flush_length=2, mjd_tol
 
 
 if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--out_file", type=str, default='ddf.npz')
+    parser.add_argument("--season_frac", type=float, default=0.2)
+    args = parser.parse_args()
+    filename = args.out_file
+
     obs_array = generate_ddf_scheduled_obs()
-    np.savez('ddf_1.npz', obs_array=obs_array)
+    np.savez(filename, obs_array=obs_array)
