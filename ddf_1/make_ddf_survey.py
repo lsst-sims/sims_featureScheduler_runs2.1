@@ -264,9 +264,15 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--out_file", type=str, default='ddf.npz')
     parser.add_argument("--season_frac", type=float, default=0.2)
+    parser.add_argument("--plot_dir", type=str, default='ddf_plots')
     args = parser.parse_args()
     filename = args.out_file
     season_frac = args.season_frac
+    plot_dir = args.plot_dir
 
-    obs_array = generate_ddf_scheduled_obs(plot_dir='ddf_plots', season_frac=season_frac)
+    if (plot_dir is not None) & (plot_dir != 'None'):
+        if not os.path.isdir(plot_dir):
+            os.makedirs(plot_dir)
+
+    obs_array = generate_ddf_scheduled_obs(plot_dir=plot_dir, season_frac=season_frac)
     np.savez(filename, obs_array=obs_array)
