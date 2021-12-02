@@ -101,7 +101,8 @@ def generate_blobs(nside, nexp=2, exptime=30., filter1s=['u', 'u', 'g', 'r', 'i'
                    shadow_minutes=60., max_alt=76., moon_distance=30., ignore_obs='DD',
                    m5_weight=6., footprint_weight=1.5, slewtime_weight=3.,
                    stayfilter_weight=3., template_weight=12., footprints=None, u_nexp1=True,
-                   scheduled_respect=45.):
+                   scheduled_respect=45., good_seeing={'g': 3, 'r': 3, 'i': 3}, good_seeing_weight=3.,
+                   mjd_start=1):
     """
     Generate surveys that take observations in blobs.
 
@@ -209,6 +210,22 @@ def generate_blobs(nside, nexp=2, exptime=30., filter1s=['u', 'u', 'g', 'r', 'i'
                                                          n_obs=n_obs_template, season=season,
                                                          season_start_hour=season_start_hour,
                                                          season_end_hour=season_end_hour), template_weight))
+
+        # Insert things for getting good seeing templates
+        if filtername2 is not None:
+            if filtername in list(good_seeing.keys()):
+                bfs.append((bf.N_good_seeing_basis_function(filtername=filtername, nside=nside, mjd_start=mjd_start,
+                                                            footprint=footprints.get_footprint(filtername),
+                                                            n_obs_desired=good_seeing[filtername]), good_seeing_weight))
+            if filtername2 in list(good_seeing.keys()):
+                bfs.append((bf.N_good_seeing_basis_function(filtername=filtername2, nside=nside, mjd_start=mjd_start,
+                                                            footprint=footprints.get_footprint(filtername2),
+                                                            n_obs_desired=good_seeing[filtername2]), good_seeing_weight))
+        else:
+            if filtername in list(good_seeing.keys()):
+                bfs.append((bf.N_good_seeing_basis_function(filtername=filtername, nside=nside, mjd_start=mjd_start,
+                                                            footprint=footprints.get_footprint(filtername),
+                                                            n_obs_desired=good_seeing[filtername]), good_seeing_weight))
         # Make sure we respect scheduled observations
         bfs.append((bf.Time_to_scheduled_basis_function(time_needed=scheduled_respect), 0))
         # Masks, give these 0 weight
@@ -394,6 +411,15 @@ def generate_twi_blobs(nside, nexp=2, exptime=30., filter1s=['r', 'i', 'z', 'y']
     return surveys
 
 
+def ddf_surveys(detailers=None, ddf_file='ddf_1.npz'):
+    #obs_array = generate_ddf_scheduled_obs()
+    data = np.load(ddf_file)
+    obs_array = data['obs_array'].copy()
+    survey = Scripted_survey([], detailers=detailers)
+    survey.set_script(obs_array)
+    return [survey]
+
+
 def run_sched(surveys, survey_length=365.25, nside=32, fileroot='baseline_', verbose=False,
               extra_info=None, illum_limit=40.):
     years = np.round(survey_length/365.25)
@@ -409,15 +435,6 @@ def run_sched(surveys, survey_length=365.25, nside=32, fileroot='baseline_', ver
                                                       filter_scheduler=filter_sched)
 
 
-def ddf_surveys(detailers=None, ddf_file='ddf_1.npz'):
-    #obs_array = generate_ddf_scheduled_obs()
-    data = np.load(ddf_file)
-    obs_array = data['obs_array'].copy()
-    survey = Scripted_survey([], detailers=detailers)
-    survey.set_script(obs_array)
-    return [survey]
-
-
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
@@ -431,6 +448,7 @@ if __name__ == "__main__":
     parser.add_argument("--rolling_nslice", type=int, default=2)
     parser.add_argument("--rolling_strength", type=float, default=0.9)
     parser.add_argument("--dbroot", type=str)
+    parser.add_argument("--gsw", type=float, default=3.0)
     parser.add_argument("--ddf_file", type=str, default='ddf.npz')
     parser.add_argument("--ddf_season_frac", type=float, default=0.2)
 
@@ -444,12 +462,12 @@ if __name__ == "__main__":
     nslice = args.rolling_nslice
     scale = args.rolling_strength
     dbroot = args.dbroot
+    gsw = args.gsw
 
     ddf_file = args.ddf_file
     ddf_season_frac = args.ddf_season_frac
 
     ddf_file = 'sf%.2f' % ddf_season_frac + ddf_file
-
     # Generate the DDF observations
     obs_array = generate_ddf_scheduled_obs(season_frac=ddf_season_frac)
     np.savez(ddf_file, obs_array=obs_array)
@@ -509,7 +527,7 @@ if __name__ == "__main__":
 
     greedy = gen_greedy_surveys(nside, nexp=nexp, footprints=footprints)
 
-    blobs = generate_blobs(nside, nexp=nexp, footprints=footprints)
+    blobs = generate_blobs(nside, nexp=nexp, footprints=footprints, mjd_start=conditions.mjd_start, good_seeing_weight=gsw)
     twi_blobs = generate_twi_blobs(nside, nexp=nexp,
                                    footprints=footprints,
                                    wfd_footprint=wfd_footprint,

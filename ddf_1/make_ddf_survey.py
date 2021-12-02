@@ -165,7 +165,7 @@ def optimize_ddf_times(ddf_name, ddf_RA, ddf_grid,
 
 def generate_ddf_scheduled_obs(data_file='ddf_grid.npz', flush_length=2, mjd_tol=15, expt=30.,
                                alt_min=25, alt_max=85, HA_min=21., HA_max=3.,
-                               dist_tol=3., solver_time_limit=200, season_frac=0.2,
+                               dist_tol=3., solver_time_limit=30, season_frac=0.2,
                                plot_dir=None):
 
     flush_length = flush_length  # days
