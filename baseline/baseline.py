@@ -475,7 +475,7 @@ if __name__ == "__main__":
         fileroot = os.path.basename(sys.argv[0]).replace('.py', '') + '_'
     else:
         fileroot = dbroot + '_'
-    file_end = '_v2.1_'
+    file_end = 'v2.1_'
 
     sm = Sky_area_generator(nside=nside)
 
