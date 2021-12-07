@@ -166,7 +166,8 @@ def optimize_ddf_times(ddf_name, ddf_RA, ddf_grid,
 def generate_ddf_scheduled_obs(data_file='ddf_grid.npz', flush_length=2, mjd_tol=15, expt=30.,
                                alt_min=25, alt_max=85, HA_min=21., HA_max=3.,
                                dist_tol=3., solver_time_limit=30, season_frac=0.2,
-                               plot_dir=None):
+                               plot_dir=None, nvis_master=[8, 20, 10, 20, 26, 20],
+                               nsnaps=[1, 2, 2, 2, 2, 2], sequence_limit=286):
 
     flush_length = flush_length  # days
     mjd_tol = mjd_tol/60/24.  # minutes to days
@@ -181,9 +182,7 @@ def generate_ddf_scheduled_obs(data_file='ddf_grid.npz', flush_length=2, mjd_tol
 
     # number of visits for each filter
     filters = 'ugrizy'
-    nvis_master = [8, 20, 10, 20, 26, 20]
-    nsnaps = [1, 2, 2, 2, 2, 2]
-
+    
     all_scheduled_obs = []
     for ddf_name in ['ELAISS1', 'XMM_LSS', 'ECDFS', 'COSMOS', 'EDFS_a']:
         print('Optimizing %s' % ddf_name)
@@ -192,7 +191,8 @@ def generate_ddf_scheduled_obs(data_file='ddf_grid.npz', flush_length=2, mjd_tol
         #         'note'
         # 'mjd_tol', 'dist_tol', 'alt_min', 'alt_max', 'HA_max', 'HA_min', 'observed'
         mjds = optimize_ddf_times(ddf_name, ddfs[ddf_name][0], ddf_grid, time_limit=solver_time_limit,
-                                  season_frac=season_frac, plot_dir=plot_dir)
+                                  season_frac=season_frac, plot_dir=plot_dir,
+                                  sequence_limit=sequence_limit)
         for mjd in mjds:
             for filtername, nvis, nexp in zip(filters, nvis_master, nsnaps):
                 if 'EDFS' in ddf_name:

@@ -412,9 +412,10 @@ def generate_twi_blobs(nside, nexp=2, exptime=30., filter1s=['r', 'i', 'z', 'y']
 
 
 def ddf_surveys(detailers=None, ddf_file='ddf_1.npz'):
-    obs_array = generate_ddf_scheduled_obs()
-    #data = np.load(ddf_file)
-    #obs_array = data['obs_array'].copy()
+    obs_array = generate_ddf_scheduled_obs(nvis_master=[4, 10, 5, 10, 13, 10],
+                                           sequence_limit=286*2)
+    # data = np.load(ddf_file)
+    # obs_array = data['obs_array'].copy()
     survey = Scripted_survey([], detailers=detailers)
     survey.set_script(obs_array)
     return [survey]
