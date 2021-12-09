@@ -411,9 +411,9 @@ def generate_twi_blobs(nside, nexp=2, exptime=30., filter1s=['r', 'i', 'z', 'y']
     return surveys
 
 
-def ddf_surveys(detailers=None, ddf_file='ddf_1.npz'):
+def ddf_surveys(detailers=None, ddf_file='ddf_1.npz', season_frac=0.2):
     obs_array = generate_ddf_scheduled_obs(nvis_master=[4, 10, 5, 10, 13, 10],
-                                           sequence_limit=286*2)
+                                           sequence_limit=286*2, season_frac=season_frac)
     # data = np.load(ddf_file)
     # obs_array = data['obs_array'].copy()
     survey = Scripted_survey([], detailers=detailers)
@@ -524,7 +524,7 @@ if __name__ == "__main__":
                dither_detailer, u_detailer]
     euclid_detailers = [detailers.Camera_rot_detailer(min_rot=-camera_ddf_rot_limit, max_rot=camera_ddf_rot_limit),
                         detailers.Euclid_dither_detailer(), u_detailer]
-    ddfs = ddf_surveys(detailers=details, ddf_file=ddf_file)
+    ddfs = ddf_surveys(detailers=details, season_frac=ddf_season_frac)
 
     greedy = gen_greedy_surveys(nside, nexp=nexp, footprints=footprints)
 
