@@ -12,7 +12,8 @@ import argparse
 
 def optimize_ddf_times(ddf_name, ddf_RA, ddf_grid,
                        sun_limit=-18, airmass_limit=2.1, sky_limit=21.75,
-                       sequence_limit=286, season_frac=0.2,
+                       sequence_limit=286, season_frac=0.1, low_season_frac=0.4,
+                       low_season_rate=0.3,
                        time_limit=30, plot_dir=None, threads=2):
     """Run gyrobi to optimize the times of a ddf
 
@@ -73,10 +74,17 @@ def optimize_ddf_times(ddf_name, ddf_RA, ddf_grid,
         m.addConstr(sched_night[i:i+1] == schedule[in_night].sum())
 
     raw_obs = np.ones(unights.size)
-    # take out the ones that are out of season
     season_mod = night_season % 1
+
+    # Set a region to be a lower cadence. 
+    low_season = np.where((season_mod < low_season_frac) | (season_mod > (1.-low_season_frac)))
+    raw_obs[low_season] = low_season_rate
+
+    # take out the ones that are out of season
+    
     out_season = np.where((season_mod < season_frac) | (season_mod > (1.-season_frac)))
     raw_obs[out_season] = 0
+
     cumulative_desired = np.cumsum(raw_obs)
     cumulative_desired = cumulative_desired/cumulative_desired.max()*sequence_limit
 
@@ -262,7 +270,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--out_file", type=str, default='ddf.npz')
-    parser.add_argument("--season_frac", type=float, default=0.2)
+    parser.add_argument("--season_frac", type=float, default=0.1)
     parser.add_argument("--plot_dir", type=str, default='ddf_plots')
     args = parser.parse_args()
     filename = args.out_file
