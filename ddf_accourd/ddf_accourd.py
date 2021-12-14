@@ -411,8 +411,10 @@ def generate_twi_blobs(nside, nexp=2, exptime=30., filter1s=['r', 'i', 'z', 'y']
     return surveys
 
 
-def ddf_surveys(detailers=None, ddf_file='ddf_1.npz', season_frac=0.2):
-    obs_array = generate_ddf_scheduled_obs(season_frac=season_frac)
+def ddf_surveys(detailers=None, ddf_file='ddf_1.npz', season_frac=0.1,
+                low_season_frac=0.4, low_season_rate=0.3):
+    obs_array = generate_ddf_scheduled_obs(season_frac=season_frac, low_season_frac=low_season_frac,
+                                           low_season_rate=low_season_rate)
     #data = np.load(ddf_file)
     #obs_array = data['obs_array'].copy()
     survey = Scripted_survey([], detailers=detailers)
@@ -450,7 +452,9 @@ if __name__ == "__main__":
     parser.add_argument("--dbroot", type=str)
     parser.add_argument("--gsw", type=float, default=3.0)
     parser.add_argument("--ddf_file", type=str, default='ddf.npz')
-    parser.add_argument("--ddf_season_frac", type=float, default=0.2)
+    parser.add_argument("--ddf_season_frac", type=float, default=0.1)
+    parser.add_argument("--ddf_low_season_frac", type=float, default=0.4)
+    parser.add_argument("--ddf_low_season_rate", type=float, default=0.3)
 
     args = parser.parse_args()
     survey_length = args.survey_length  # Days
@@ -466,6 +470,8 @@ if __name__ == "__main__":
 
     ddf_file = args.ddf_file
     ddf_season_frac = args.ddf_season_frac
+    ddf_low_season_frac = args.ddf_low_season_frac
+    ddf_low_season_rate = args.ddf_low_season_rate
 
     ddf_file = 'sf%.2f' % ddf_season_frac + ddf_file
     # Generate the DDF observations
@@ -494,7 +500,7 @@ if __name__ == "__main__":
         fileroot = os.path.basename(sys.argv[0]).replace('.py', '') + '_'
     else:
         fileroot = dbroot + '_'
-    file_end = 'slf%.2f_v2.1_' % ddf_season_frac
+    file_end = 'sf%.1f_lsf%.1f_lsr%.1f_v2.1_' % (ddf_season_frac, ddf_low_season_frac, ddf_low_season_rate)
 
     sm = Sky_area_generator(nside=nside)
 
@@ -523,7 +529,8 @@ if __name__ == "__main__":
                dither_detailer, u_detailer]
     euclid_detailers = [detailers.Camera_rot_detailer(min_rot=-camera_ddf_rot_limit, max_rot=camera_ddf_rot_limit),
                         detailers.Euclid_dither_detailer(), u_detailer]
-    ddfs = ddf_surveys(detailers=details, season_frac=ddf_season_frac)
+    ddfs = ddf_surveys(detailers=details, season_frac=ddf_season_frac, low_season_frac=ddf_low_season_frac,
+                       low_season_rate=ddf_low_season_rate)
 
     greedy = gen_greedy_surveys(nside, nexp=nexp, footprints=footprints)
 
