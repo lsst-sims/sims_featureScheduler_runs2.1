@@ -14,7 +14,7 @@ We have also added a basis function to drive the collection of "good seeing" ima
 
 ## Science Impact
 
-The science impact of the above changes are minimal, with our primary science metrics showing changes of 1-2%. 
+The science impact of the above changes are minimal, with our primary science metrics showing changes of 1-2%. There is a small improvement on some cosmology metrics (SNe Ia, 3x2 FoM), and a small loss on astrometry metrics (although the WFD area has increased slightly, which is not captured in the astrometry metrics).
 
 
 <table style="background-color:#FFFFE0;">
