@@ -16,4 +16,4 @@ We have also added a basis function to drive the collection of "good seeing" ima
 
 The science impact of the above changes are minimal, with our primary science metrics showing changes of 1-2%. 
 
-![radar plot](compare_radar.png)
+<img src="compare_radar.png" style="background-color:white;" />
