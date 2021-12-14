@@ -10,7 +10,7 @@
 
 There are some subtle changes in the footprint. We have added the Virgo cluster, and simplified some regions so that each healpixel now has only 1 label (e.g., no more little NES swath near the galactic center).
 
-We have also added a basis function to drive the collection of "good seeing" images in gri filters. 
+We have also added a basis function to drive the collection of "good seeing" images in gri filters. Without this addition, in the first year the gri bands have 14,000, 22,000 and 23,000 square degrees of "good seeing area" respectively. The new baseline increases these values to 18,000, 23,500 and 24,000 square degrees.
 
 ## Science Impact
 
