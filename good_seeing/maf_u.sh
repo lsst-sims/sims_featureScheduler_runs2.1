@@ -1,0 +1,14 @@
+scimaf_dir --db good_seeing_u_gsw0.0_v2.1_10yrs.db
+scimaf_dir --db good_seeing_u_gsw10.0_v2.1_10yrs.db
+scimaf_dir --db good_seeing_u_gsw1.0_v2.1_10yrs.db
+scimaf_dir --db good_seeing_u_gsw20.0_v2.1_10yrs.db
+scimaf_dir --db good_seeing_u_gsw3.0_v2.1_10yrs.db
+scimaf_dir --db good_seeing_u_gsw50.0_v2.1_10yrs.db
+scimaf_dir --db good_seeing_u_gsw6.0_v2.1_10yrs.db
+glance_dir --db good_seeing_u_gsw0.0_v2.1_10yrs.db
+glance_dir --db good_seeing_u_gsw10.0_v2.1_10yrs.db
+glance_dir --db good_seeing_u_gsw1.0_v2.1_10yrs.db
+glance_dir --db good_seeing_u_gsw20.0_v2.1_10yrs.db
+glance_dir --db good_seeing_u_gsw3.0_v2.1_10yrs.db
+glance_dir --db good_seeing_u_gsw50.0_v2.1_10yrs.db
+glance_dir --db good_seeing_u_gsw6.0_v2.1_10yrs.db
