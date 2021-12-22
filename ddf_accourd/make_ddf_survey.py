@@ -1,13 +1,63 @@
 import numpy as np
-import gurobipy as gp
-from gurobipy import GRB
-import scipy.sparse as sp
-from scipy.stats import binned_statistic
 import matplotlib.pylab as plt
 from rubin_sim.utils import calcSeason, ddf_locations
 from rubin_sim.scheduler.utils import scheduled_observation
 import os
 import argparse
+
+
+def match_cumulative(cumulative_desired, mask=None, no_duplicate=True):
+    """Generate a schedule that tries to match the desired cumulative distribution given a mask
+
+    Parameters
+    ----------
+    cumulative_desired : `np.array`, float
+        An array with the cumulative number of desired observations. Elements
+        are assumed to be evenly spaced. 
+    mask : `np.array`, bool or int (None)
+        Set to zero for indices that cannot be scheduled
+    no_duplicate : bool (True)
+        If True, only 1 event can be scheduled per element
+
+    Returns
+    -------
+    schedule : `np.array`
+        The resulting schedule, with values marking number of events in that cell.
+    """
+
+    rounded_desired = np.round(cumulative_desired)
+    sched = cumulative_desired*0
+    if mask is None:
+        mask = np.ones(sched.size)
+
+    valid = np.where(mask > 0)[0].tolist()
+    x = np.arange(sched.size)
+
+    drd = np.diff(rounded_desired)
+    step_points = np.where(drd > 0)[0] + 1
+
+    # would be nice to eliminate this loop, but it's not too bad.
+    # can't just use searchsorted on the whole array, because then there
+    # can be duplicate values, and array[[n,n]] = 1 means that extra match gets lost.
+    for indx in step_points:
+        left = np.searchsorted(x[valid], indx)
+        right = np.searchsorted(x[valid], indx, side='right')
+        d1 = indx - left
+        d2 = right - indx
+        if d1 < d2:
+            sched_at = left
+        else:
+            sched_at = right
+
+        # If we are off the end
+        if sched_at >= len(valid):
+            sched_at -= 1
+        
+        sched[valid[sched_at]] += 1
+        if no_duplicate:
+            valid.pop(sched_at)
+
+    return sched
 
 
 def optimize_ddf_times(ddf_name, ddf_RA, ddf_grid,
@@ -34,12 +84,7 @@ def optimize_ddf_times(ddf_name, ddf_RA, ddf_grid,
     night[np.where((ddf_grid['sun_alt'][1:] >= 0) & (ack < 0))] += 1
     night = np.cumsum(night)
 
-    m = gp.Model(ddf_name)
-
     ngrid = ddf_grid['mjd'].size
-
-    # Let's try scheduling just one for now
-    schedule = m.addMVar(ngrid, vtype=GRB.BINARY, name="pointing_1")
 
     # set a sun mask
     sun_mask = np.zeros(ngrid, dtype=bool)
@@ -52,26 +97,26 @@ def optimize_ddf_times(ddf_name, ddf_RA, ddf_grid,
     sky_mask[np.where(ddf_grid['%s_sky_g' % ddf_name] <= sky_limit)] = 1
     sky_mask[np.where(np.isnan(ddf_grid['%s_sky_g' % ddf_name]) == True)] = 1
 
-    # Let's add the constraints
-    m.addConstr(schedule @ sun_mask == 0)
-    m.addConstr(schedule @ airmass_mask == 0)
-    m.addConstr(schedule @ sky_mask == 0)
+    m5_mask = np.zeros(ngrid, dtype=bool)
+    m5_mask[np.isfinite(ddf_grid['%s_m5_g' % ddf_name])] = 1
 
-    # limit the total number of ddf sequences
-    # Need to set an exact number I think. Or maybe a range.
-    m.addConstr(schedule.sum() == sequence_limit)
+    mask = np.ones(ngrid)
+    mask *= airmass_mask
+    mask *= sky_mask
+    mask *= sun_mask
+    mask *= m5_mask
+
+    good_nights = np.unique(night[np.where(mask > 0)[0]])
 
     # prevent a repeat sequence in a night
     unights, indx = np.unique(night, return_index=True)
     night_mjd = ddf_grid['mjd'][indx]
+
+    mask = np.zeros(unights.size)
+    mask[np.in1d(unights, good_nights)] = 1
+
     # The season of each night
     night_season = calcSeason(ddf_RA, night_mjd)
-    sched_night = m.addMVar(unights.size, vtype=GRB.INTEGER)
-    for i, n in enumerate(unights):
-        in_night = np.where(night == n)[0]
-        m.addConstr(schedule[in_night]@schedule[in_night] <= 1)
-        # Need to index this weird now to make it return an MVar instead of Var
-        m.addConstr(sched_night[i:i+1] == schedule[in_night].sum())
 
     raw_obs = np.ones(unights.size)
     season_mod = night_season % 1
@@ -88,33 +133,9 @@ def optimize_ddf_times(ddf_name, ddf_RA, ddf_grid,
     cumulative_desired = np.cumsum(raw_obs)
     cumulative_desired = cumulative_desired/cumulative_desired.max()*sequence_limit
 
-    # Makes it go blazing fast agian, that's for sure!
-    cumulative_desired = np.round(cumulative_desired)
-
-    # Cumulative number of scheduled events (by night, to avoid huge loop)
-    cumulative_sched = m.addMVar(unights.size, vtype=GRB.INTEGER)
-    cumulative_diff = m.addMVar(unights.size, vtype=GRB.INTEGER, lb=-sequence_limit, ub=sequence_limit)
-
-    m.addConstr(cumulative_sched[0] == sched_night[0])
-
-    m.addConstr(cumulative_diff[0] == cumulative_sched[0] - cumulative_desired[0])
-
-    for i in np.arange(1, unights.size):
-
-        m.addConstr(cumulative_sched[i] == cumulative_sched[i-1]+sched_night[i])
-        m.addConstr(cumulative_diff[i] == cumulative_sched[i] - cumulative_desired[i])
-
-    # Try to match a CDF
-    # I think this is basically a chi^2 minimization. If we did absolute val difference, it would be linear and
-    # then it's easier to do more than one simultaneously.
-    m.setObjective(cumulative_diff@cumulative_diff, GRB.MINIMIZE)
-    m.Params.TimeLimit = time_limit
-    m.Params.Threads = threads
-    m.optimize()
-    result_array = schedule.X
-
-    nights_to_use = night[np.where(result_array == 1)]
-
+    night_sched = match_cumulative(cumulative_desired, mask=mask, no_duplicate=True)
+    nights_to_use = unights[np.where(night_sched > 0)[0]]
+    
     # For each night, find the best time in the night. 
     mjds = []
     for night_check in nights_to_use:
@@ -126,6 +147,8 @@ def optimize_ddf_times(ddf_name, ddf_RA, ddf_grid,
 
     # Maybe make some optional plots to check things.
     if plot_dir is not None:
+
+        cumulative_sched = np.cumsum(night_sched)
 
         sub_night = 365*1.5
 
@@ -151,14 +174,14 @@ def optimize_ddf_times(ddf_name, ddf_RA, ddf_grid,
 
         fig, (ax1, ax2) = plt.subplots(1, 2)
 
-        ax1.plot(cumulative_sched.X)
+        ax1.plot(cumulative_sched)
         ax1.plot(cumulative_desired)
         ax1.set_xlabel('Night')
         ax1.set_ylabel('Cumulative nuumber of events')
         ax1.set_title(ddf_name)
 
         good = np.where(unights < sub_night)
-        ax2.plot(cumulative_sched.X[good])
+        ax2.plot(cumulative_sched[good])
         ax2.plot(cumulative_desired[good])
         ax2.set_xlabel('Night')
         ax2.set_ylabel('Cumulative nuumber of events')
