@@ -1,8 +1,4 @@
 import numpy as np
-import gurobipy as gp
-from gurobipy import GRB
-import scipy.sparse as sp
-from scipy.stats import binned_statistic
 import matplotlib.pylab as plt
 from rubin_sim.utils import calcSeason, ddf_locations
 from rubin_sim.scheduler.utils import scheduled_observation
@@ -10,9 +6,63 @@ import os
 import argparse
 
 
+def match_cumulative(cumulative_desired, mask=None, no_duplicate=True):
+    """Generate a schedule that tries to match the desired cumulative distribution given a mask
+
+    Parameters
+    ----------
+    cumulative_desired : `np.array`, float
+        An array with the cumulative number of desired observations. Elements
+        are assumed to be evenly spaced. 
+    mask : `np.array`, bool or int (None)
+        Set to zero for indices that cannot be scheduled
+    no_duplicate : bool (True)
+        If True, only 1 event can be scheduled per element
+
+    Returns
+    -------
+    schedule : `np.array`
+        The resulting schedule, with values marking number of events in that cell.
+    """
+
+    rounded_desired = np.round(cumulative_desired)
+    sched = cumulative_desired*0
+    if mask is None:
+        mask = np.ones(sched.size)
+
+    valid = np.where(mask > 0)[0].tolist()
+    x = np.arange(sched.size)
+
+    drd = np.diff(rounded_desired)
+    step_points = np.where(drd > 0)[0] + 1
+
+    # would be nice to eliminate this loop, but it's not too bad.
+    # can't just use searchsorted on the whole array, because then there
+    # can be duplicate values, and array[[n,n]] = 1 means that extra match gets lost.
+    for indx in step_points:
+        left = np.searchsorted(x[valid], indx)
+        right = np.searchsorted(x[valid], indx, side='right')
+        d1 = indx - left
+        d2 = right - indx
+        if d1 < d2:
+            sched_at = left
+        else:
+            sched_at = right
+
+        # If we are off the end
+        if sched_at >= len(valid):
+            sched_at -= 1
+        
+        sched[valid[sched_at]] += 1
+        if no_duplicate:
+            valid.pop(sched_at)
+
+    return sched
+
+
 def optimize_ddf_times(ddf_name, ddf_RA, ddf_grid,
                        sun_limit=-18, airmass_limit=2.1, sky_limit=21.75,
-                       sequence_limit=286, season_frac=0.2,
+                       sequence_limit=286, season_frac=0.1,
                        time_limit=30, plot_dir=None, threads=2):
     """Run gyrobi to optimize the times of a ddf
 
@@ -32,81 +82,48 @@ def optimize_ddf_times(ddf_name, ddf_RA, ddf_grid,
     night = np.zeros(ddf_grid.size, dtype=int)
     night[np.where((ddf_grid['sun_alt'][1:] >= 0) & (ack < 0))] += 1
     night = np.cumsum(night)
-
-    m = gp.Model(ddf_name)
-
     ngrid = ddf_grid['mjd'].size
 
-    # Let's try scheduling just one for now
-    schedule = m.addMVar(ngrid, vtype=GRB.BINARY, name="pointing_1")
+    # set a sun, airmass, sky masks
+    sun_mask = np.ones(ngrid, dtype=int)
+    sun_mask[np.where(ddf_grid['sun_alt'] >= sun_limit)] = 0
 
-    # set a sun mask
-    sun_mask = np.zeros(ngrid, dtype=bool)
-    sun_mask[np.where(ddf_grid['sun_alt'] >= sun_limit)] = 1
+    airmass_mask = np.ones(ngrid, dtype=int)
+    airmass_mask[np.where(ddf_grid['%s_airmass' % ddf_name] >= airmass_limit)] = 0
 
-    airmass_mask = np.zeros(ngrid, dtype=bool)
-    airmass_mask[np.where(ddf_grid['%s_airmass' % ddf_name] >= airmass_limit)] = 1
+    sky_mask = np.ones(ngrid, dtype=int)
+    sky_mask[np.where(ddf_grid['%s_sky_g' % ddf_name] <= sky_limit)] = 0
+    sky_mask[np.where(np.isnan(ddf_grid['%s_sky_g' % ddf_name]) == True)] = 0
 
-    sky_mask = np.zeros(ngrid, dtype=bool)
-    sky_mask[np.where(ddf_grid['%s_sky_g' % ddf_name] <= sky_limit)] = 1
-    sky_mask[np.where(np.isnan(ddf_grid['%s_sky_g' % ddf_name]) == True)] = 1
+    m5_mask = np.zeros(ngrid, dtype=bool)
+    m5_mask[np.isfinite(ddf_grid['%s_m5_g' % ddf_name])] = 1
 
-    # Let's add the constraints
-    m.addConstr(schedule @ sun_mask == 0)
-    m.addConstr(schedule @ airmass_mask == 0)
-    m.addConstr(schedule @ sky_mask == 0)
+    big_mask = sun_mask * airmass_mask * sky_mask * m5_mask
 
-    # limit the total number of ddf sequences
-    # Need to set an exact number I think. Or maybe a range.
-    m.addConstr(schedule.sum() == sequence_limit)
+    potential_nights = np.unique(night[np.where(big_mask > 0)])
 
     # prevent a repeat sequence in a night
     unights, indx = np.unique(night, return_index=True)
     night_mjd = ddf_grid['mjd'][indx]
     # The season of each night
     night_season = calcSeason(ddf_RA, night_mjd)
-    sched_night = m.addMVar(unights.size, vtype=GRB.INTEGER)
-    for i, n in enumerate(unights):
-        in_night = np.where(night == n)[0]
-        m.addConstr(schedule[in_night]@schedule[in_night] <= 1)
-        # Need to index this weird now to make it return an MVar instead of Var
-        m.addConstr(sched_night[i:i+1] == schedule[in_night].sum())
 
     raw_obs = np.ones(unights.size)
     # take out the ones that are out of season
     season_mod = night_season % 1
+
     out_season = np.where((season_mod < season_frac) | (season_mod > (1.-season_frac)))
     raw_obs[out_season] = 0
     cumulative_desired = np.cumsum(raw_obs)
     cumulative_desired = cumulative_desired/cumulative_desired.max()*sequence_limit
 
-    # Makes it go blazing fast agian, that's for sure!
-    cumulative_desired = np.round(cumulative_desired)
+    night_mask = unights*0
+    night_mask[potential_nights] = 1
 
-    # Cumulative number of scheduled events (by night, to avoid huge loop)
-    cumulative_sched = m.addMVar(unights.size, vtype=GRB.INTEGER)
-    cumulative_diff = m.addMVar(unights.size, vtype=GRB.INTEGER, lb=-sequence_limit, ub=sequence_limit)
+    unight_sched = match_cumulative(cumulative_desired, mask=night_mask)
 
-    m.addConstr(cumulative_sched[0] == sched_night[0])
-
-    m.addConstr(cumulative_diff[0] == cumulative_sched[0] - cumulative_desired[0])
-
-    for i in np.arange(1, unights.size):
-
-        m.addConstr(cumulative_sched[i] == cumulative_sched[i-1]+sched_night[i])
-        m.addConstr(cumulative_diff[i] == cumulative_sched[i] - cumulative_desired[i])
-
-    # Try to match a CDF
-    # I think this is basically a chi^2 minimization. If we did absolute val difference, it would be linear and
-    # then it's easier to do more than one simultaneously.
-    m.setObjective(cumulative_diff@cumulative_diff, GRB.MINIMIZE)
-    m.Params.TimeLimit = time_limit
-    m.Params.Threads = threads
-    m.optimize()
-    result_array = schedule.X
-
-    nights_to_use = night[np.where(result_array == 1)]
-
+    nights_to_use = unights[np.where(unight_sched == 1)]
+    
     # For each night, find the best time in the night. 
     mjds = []
     for night_check in nights_to_use:
@@ -118,6 +135,8 @@ def optimize_ddf_times(ddf_name, ddf_RA, ddf_grid,
 
     # Maybe make some optional plots to check things.
     if plot_dir is not None:
+
+        cumulative_sched = np.cumsum(unight_sched)
 
         sub_night = 365*1.5
 
@@ -143,14 +162,14 @@ def optimize_ddf_times(ddf_name, ddf_RA, ddf_grid,
 
         fig, (ax1, ax2) = plt.subplots(1, 2)
 
-        ax1.plot(cumulative_sched.X)
+        ax1.plot(cumulative_sched)
         ax1.plot(cumulative_desired)
         ax1.set_xlabel('Night')
         ax1.set_ylabel('Cumulative nuumber of events')
         ax1.set_title(ddf_name)
 
         good = np.where(unights < sub_night)
-        ax2.plot(cumulative_sched.X[good])
+        ax2.plot(cumulative_sched[good])
         ax2.plot(cumulative_desired[good])
         ax2.set_xlabel('Night')
         ax2.set_ylabel('Cumulative nuumber of events')
@@ -164,7 +183,8 @@ def optimize_ddf_times(ddf_name, ddf_RA, ddf_grid,
 
 def generate_ddf_scheduled_obs(data_file='ddf_grid.npz', flush_length=2, mjd_tol=15, expt=30.,
                                alt_min=25, alt_max=85, HA_min=21., HA_max=3.,
-                               dist_tol=3., solver_time_limit=30, season_frac=0.2,
+                               dist_tol=3., solver_time_limit=30, season_frac=0.1,
+                               low_season_frac=0.4, low_season_rate=0.3,
                                plot_dir=None, nvis_master=[8, 20, 10, 20, 26, 20],
                                nsnaps=[1, 2, 2, 2, 2, 2], sequence_limit=286):
 
@@ -190,7 +210,8 @@ def generate_ddf_scheduled_obs(data_file='ddf_grid.npz', flush_length=2, mjd_tol
         #         'note'
         # 'mjd_tol', 'dist_tol', 'alt_min', 'alt_max', 'HA_max', 'HA_min', 'observed'
         mjds = optimize_ddf_times(ddf_name, ddfs[ddf_name][0], ddf_grid, time_limit=solver_time_limit,
-                                  season_frac=season_frac, plot_dir=plot_dir,
+                                  season_frac=season_frac,
+                                  plot_dir=plot_dir,
                                   sequence_limit=sequence_limit)
         for mjd in mjds:
             for filtername, nvis, nexp in zip(filters, nvis_master, nsnaps):
@@ -262,7 +283,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--out_file", type=str, default='ddf.npz')
-    parser.add_argument("--season_frac", type=float, default=0.2)
+    parser.add_argument("--season_frac", type=float, default=0.1)
     parser.add_argument("--plot_dir", type=str, default='ddf_plots')
     args = parser.parse_args()
     filename = args.out_file

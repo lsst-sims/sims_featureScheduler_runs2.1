@@ -470,8 +470,8 @@ if __name__ == "__main__":
 
     ddf_file = 'sf%.2f' % ddf_season_frac + ddf_file
     # Generate the DDF observations
-    obs_array = generate_ddf_scheduled_obs(season_frac=ddf_season_frac)
-    np.savez(ddf_file, obs_array=obs_array)
+    #obs_array = generate_ddf_scheduled_obs(season_frac=ddf_season_frac)
+    #np.savez(ddf_file, obs_array=obs_array)
 
     nside = 32
     per_night = True  # Dither DDF per night

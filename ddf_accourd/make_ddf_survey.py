@@ -83,58 +83,51 @@ def optimize_ddf_times(ddf_name, ddf_RA, ddf_grid,
     night = np.zeros(ddf_grid.size, dtype=int)
     night[np.where((ddf_grid['sun_alt'][1:] >= 0) & (ack < 0))] += 1
     night = np.cumsum(night)
-
     ngrid = ddf_grid['mjd'].size
 
-    # set a sun mask
-    sun_mask = np.zeros(ngrid, dtype=bool)
-    sun_mask[np.where(ddf_grid['sun_alt'] >= sun_limit)] = 1
+    # set a sun, airmass, sky masks
+    sun_mask = np.ones(ngrid, dtype=int)
+    sun_mask[np.where(ddf_grid['sun_alt'] >= sun_limit)] = 0
 
-    airmass_mask = np.zeros(ngrid, dtype=bool)
-    airmass_mask[np.where(ddf_grid['%s_airmass' % ddf_name] >= airmass_limit)] = 1
+    airmass_mask = np.ones(ngrid, dtype=int)
+    airmass_mask[np.where(ddf_grid['%s_airmass' % ddf_name] >= airmass_limit)] = 0
 
-    sky_mask = np.zeros(ngrid, dtype=bool)
-    sky_mask[np.where(ddf_grid['%s_sky_g' % ddf_name] <= sky_limit)] = 1
-    sky_mask[np.where(np.isnan(ddf_grid['%s_sky_g' % ddf_name]) == True)] = 1
+    sky_mask = np.ones(ngrid, dtype=int)
+    sky_mask[np.where(ddf_grid['%s_sky_g' % ddf_name] <= sky_limit)] = 0
+    sky_mask[np.where(np.isnan(ddf_grid['%s_sky_g' % ddf_name]) == True)] = 0
 
     m5_mask = np.zeros(ngrid, dtype=bool)
     m5_mask[np.isfinite(ddf_grid['%s_m5_g' % ddf_name])] = 1
 
-    mask = np.ones(ngrid)
-    mask *= airmass_mask
-    mask *= sky_mask
-    mask *= sun_mask
-    mask *= m5_mask
+    big_mask = sun_mask * airmass_mask * sky_mask * m5_mask
 
-    good_nights = np.unique(night[np.where(mask > 0)[0]])
+    potential_nights = np.unique(night[np.where(big_mask > 0)])
 
     # prevent a repeat sequence in a night
     unights, indx = np.unique(night, return_index=True)
     night_mjd = ddf_grid['mjd'][indx]
-
-    mask = np.zeros(unights.size)
-    mask[np.in1d(unights, good_nights)] = 1
-
     # The season of each night
     night_season = calcSeason(ddf_RA, night_mjd)
 
     raw_obs = np.ones(unights.size)
+    # take out the ones that are out of season
     season_mod = night_season % 1
 
     # Set a region to be a lower cadence. 
     low_season = np.where((season_mod < low_season_frac) | (season_mod > (1.-low_season_frac)))
     raw_obs[low_season] = low_season_rate
 
-    # take out the ones that are out of season
-    
     out_season = np.where((season_mod < season_frac) | (season_mod > (1.-season_frac)))
     raw_obs[out_season] = 0
-
     cumulative_desired = np.cumsum(raw_obs)
     cumulative_desired = cumulative_desired/cumulative_desired.max()*sequence_limit
 
-    night_sched = match_cumulative(cumulative_desired, mask=mask, no_duplicate=True)
-    nights_to_use = unights[np.where(night_sched > 0)[0]]
+    night_mask = unights*0
+    night_mask[potential_nights] = 1
+
+    unight_sched = match_cumulative(cumulative_desired, mask=night_mask)
+
+    nights_to_use = unights[np.where(unight_sched == 1)]
     
     # For each night, find the best time in the night. 
     mjds = []
@@ -148,7 +141,7 @@ def optimize_ddf_times(ddf_name, ddf_RA, ddf_grid,
     # Maybe make some optional plots to check things.
     if plot_dir is not None:
 
-        cumulative_sched = np.cumsum(night_sched)
+        cumulative_sched = np.cumsum(unight_sched)
 
         sub_night = 365*1.5
 
