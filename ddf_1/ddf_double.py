@@ -16,6 +16,9 @@ import subprocess
 import os
 import argparse
 from make_ddf_survey import generate_ddf_scheduled_obs
+# So things don't fail on hyak
+from astropy.utils import iers
+iers.conf.auto_download = False
 
 
 def gen_greedy_surveys(nside=32, nexp=2, exptime=30., filters=['r', 'i', 'z', 'y'],
