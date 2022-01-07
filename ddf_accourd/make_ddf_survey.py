@@ -149,9 +149,9 @@ def optimize_ddf_times(ddf_name, ddf_RA, ddf_grid,
 
 def generate_ddf_scheduled_obs(data_file='ddf_grid.npz', flush_length=2, mjd_tol=15, expt=30.,
                                alt_min=25, alt_max=85, HA_min=21., HA_max=3.,
-                               dist_tol=3., solver_time_limit=30, season_frac=0.1,
+                               dist_tol=3., season_frac=0.1,
                                low_season_frac=0.4, low_season_rate=0.3,
-                               plot_dir=None, nvis_master=[8, 20, 10, 20, 26, 20],
+                               nvis_master=[8, 20, 10, 20, 26, 20],
                                nsnaps=[1, 2, 2, 2, 2, 2], sequence_limit=286):
 
     flush_length = flush_length  # days
@@ -175,10 +175,9 @@ def generate_ddf_scheduled_obs(data_file='ddf_grid.npz', flush_length=2, mjd_tol
         # 'ID', 'RA', 'dec', 'mjd', 'flush_by_mjd', 'exptime', 'filter', 'rotSkyPos', 'nexp',
         #         'note'
         # 'mjd_tol', 'dist_tol', 'alt_min', 'alt_max', 'HA_max', 'HA_min', 'observed'
-        mjds = optimize_ddf_times(ddf_name, ddfs[ddf_name][0], ddf_grid, time_limit=solver_time_limit,
+        mjds = optimize_ddf_times(ddf_name, ddfs[ddf_name][0], ddf_grid,
                                   season_frac=season_frac, low_season_frac=low_season_frac,
                                   low_season_rate=low_season_rate,
-                                  plot_dir=plot_dir,
                                   sequence_limit=sequence_limit)[0]
         for mjd in mjds:
             for filtername, nvis, nexp in zip(filters, nvis_master, nsnaps):

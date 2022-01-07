@@ -2,7 +2,7 @@
 
 if __name__ == "__main__":
 
-    season_fractions = [0.05, 0.1, 0.2]
+    season_fractions = [0.05, 0.1, 0.2, 0.25, 0.3]
     low_seasons = [0.4, 0.3, 0.2, 0.15]
     low_rates = [0.1, 0.3, 0.5]
 
