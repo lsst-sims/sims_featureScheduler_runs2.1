@@ -63,7 +63,8 @@ def match_cumulative(cumulative_desired, mask=None, no_duplicate=True):
 def optimize_ddf_times(ddf_name, ddf_RA, ddf_grid,
                        sun_limit=-18, airmass_limit=2.5, sky_limit=None,
                        g_depth_limit=23.5, sequence_limit=286, season_frac=0.1,
-                       time_limit=30, plot_dir=None, threads=2):
+                       low_season_frac=0.4,
+                       low_season_rate=0.3):
     """Run gyrobi to optimize the times of a ddf
 
     Parameters
@@ -115,6 +116,10 @@ def optimize_ddf_times(ddf_name, ddf_RA, ddf_grid,
     raw_obs = np.ones(unights.size)
     # take out the ones that are out of season
     season_mod = night_season % 1
+
+    # Set a region to be a lower cadence. 
+    low_season = np.where((season_mod < low_season_frac) | (season_mod > (1.-low_season_frac)))
+    raw_obs[low_season] = low_season_rate
 
     out_season = np.where((season_mod < season_frac) | (season_mod > (1.-season_frac)))
     raw_obs[out_season] = 0
