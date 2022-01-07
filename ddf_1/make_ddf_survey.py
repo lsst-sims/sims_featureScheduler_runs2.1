@@ -125,10 +125,12 @@ def optimize_ddf_times(ddf_name, ddf_RA, ddf_grid,
     night_mask[potential_nights] = 1
 
     unight_sched = match_cumulative(cumulative_desired, mask=night_mask)
+    cumulative_sched = np.cumsum(unight_sched)
 
     nights_to_use = unights[np.where(unight_sched == 1)]
     
     # For each night, find the best time in the night. 
+    # XXX--probably need to expand this part to resolve the times when multiple things get scheduled
     mjds = []
     for night_check in nights_to_use:
         in_night = np.where((night == night_check) & (np.isfinite(ddf_grid['%s_m5_g' % ddf_name])))[0]
@@ -137,52 +139,7 @@ def optimize_ddf_times(ddf_name, ddf_RA, ddf_grid,
         max_indx = np.where(m5s == m5s.max())[0].min()
         mjds.append(ddf_grid['mjd'][in_night[max_indx]])
 
-    # Maybe make some optional plots to check things.
-    if plot_dir is not None:
-
-        cumulative_sched = np.cumsum(unight_sched)
-
-        sub_night = 365*1.5
-
-        fig, (ax1, ax2) = plt.subplots(1, 2)
-        ax1.plot(ddf_grid['mjd'], ddf_grid['%s_m5_g' % ddf_name])
-        _temp, indx1, indx2 = np.intersect1d(mjds, ddf_grid['mjd'], return_indices=True)
-        ax1.plot(mjds, ddf_grid['%s_m5_g' % ddf_name][indx2], 'ko')
-        ax1.set_xlabel('MJD')
-        ax1.set_ylabel('5-sigma depth (mags)')
-        ax1.set_title(ddf_name)
-
-        ax2.plot(ddf_grid['mjd'], ddf_grid['%s_m5_g' % ddf_name])
-        ax2.plot(mjds, ddf_grid['%s_m5_g' % ddf_name][indx2], 'ko')
-        mjd_start = np.min(mjds)
-        ax2.set_xlim(mjd_start, mjd_start + sub_night)
-        ax2.set_xlabel('MJD')
-        ax2.set_ylabel('5-sigma depth (mags)')
-        ax2.set_title(ddf_name)
-
-        fig.tight_layout()
-
-        fig.savefig(os.path.join(plot_dir, ddf_name + '_p1.pdf'))
-
-        fig, (ax1, ax2) = plt.subplots(1, 2)
-
-        ax1.plot(cumulative_sched)
-        ax1.plot(cumulative_desired)
-        ax1.set_xlabel('Night')
-        ax1.set_ylabel('Cumulative nuumber of events')
-        ax1.set_title(ddf_name)
-
-        good = np.where(unights < sub_night)
-        ax2.plot(cumulative_sched[good])
-        ax2.plot(cumulative_desired[good])
-        ax2.set_xlabel('Night')
-        ax2.set_ylabel('Cumulative nuumber of events')
-        ax2.set_title(ddf_name)
-
-        fig.tight_layout()
-        fig.savefig(os.path.join(plot_dir, ddf_name + '_p2.pdf'))
-
-    return mjds
+    return mjds, night_mjd, cumulative_desired, cumulative_sched
 
 
 def generate_ddf_scheduled_obs(data_file='ddf_grid.npz', flush_length=2, mjd_tol=15, expt=30.,
@@ -216,7 +173,7 @@ def generate_ddf_scheduled_obs(data_file='ddf_grid.npz', flush_length=2, mjd_tol
         mjds = optimize_ddf_times(ddf_name, ddfs[ddf_name][0], ddf_grid, time_limit=solver_time_limit,
                                   season_frac=season_frac,
                                   plot_dir=plot_dir,
-                                  sequence_limit=sequence_limit)
+                                  sequence_limit=sequence_limit)[0]
         for mjd in mjds:
             for filtername, nvis, nexp in zip(filters, nvis_master, nsnaps):
                 if 'EDFS' in ddf_name:
