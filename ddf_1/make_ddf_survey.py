@@ -61,8 +61,8 @@ def match_cumulative(cumulative_desired, mask=None, no_duplicate=True):
 
 
 def optimize_ddf_times(ddf_name, ddf_RA, ddf_grid,
-                       sun_limit=-18, airmass_limit=2.1, sky_limit=21.75,
-                       sequence_limit=286, season_frac=0.1,
+                       sun_limit=-18, airmass_limit=2.5, sky_limit=None,
+                       g_depth_limit=23.5, sequence_limit=286, season_frac=0.1,
                        time_limit=30, plot_dir=None, threads=2):
     """Run gyrobi to optimize the times of a ddf
 
@@ -92,11 +92,15 @@ def optimize_ddf_times(ddf_name, ddf_RA, ddf_grid,
     airmass_mask[np.where(ddf_grid['%s_airmass' % ddf_name] >= airmass_limit)] = 0
 
     sky_mask = np.ones(ngrid, dtype=int)
-    sky_mask[np.where(ddf_grid['%s_sky_g' % ddf_name] <= sky_limit)] = 0
-    sky_mask[np.where(np.isnan(ddf_grid['%s_sky_g' % ddf_name]) == True)] = 0
+    if sky_limit is not None:
+        sky_mask[np.where(ddf_grid['%s_sky_g' % ddf_name] <= sky_limit)] = 0
+        sky_mask[np.where(np.isnan(ddf_grid['%s_sky_g' % ddf_name]) == True)] = 0
 
     m5_mask = np.zeros(ngrid, dtype=bool)
     m5_mask[np.isfinite(ddf_grid['%s_m5_g' % ddf_name])] = 1
+
+    if g_depth_limit is not None:
+        m5_mask[np.where(ddf_grid['%s_m5_g' % ddf_name] < g_depth_limit)] = 0
 
     big_mask = sun_mask * airmass_mask * sky_mask * m5_mask
 
