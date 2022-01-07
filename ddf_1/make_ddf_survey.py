@@ -171,7 +171,6 @@ def generate_ddf_scheduled_obs(data_file='ddf_grid.npz', flush_length=2, mjd_tol
         # 'mjd_tol', 'dist_tol', 'alt_min', 'alt_max', 'HA_max', 'HA_min', 'observed'
         mjds = optimize_ddf_times(ddf_name, ddfs[ddf_name][0], ddf_grid,
                                   season_frac=season_frac,
-                                  plot_dir=plot_dir,
                                   sequence_limit=sequence_limit)[0]
         for mjd in mjds:
             for filtername, nvis, nexp in zip(filters, nvis_master, nsnaps):
