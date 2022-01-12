@@ -414,8 +414,8 @@ def generate_twi_blobs(nside, nexp=2, exptime=30., filter1s=['r', 'i', 'z', 'y']
     return surveys
 
 
-def ddf_surveys(detailers=None, ddf_file='ddf_1.npz', season_frac=0.2):
-    obs_array = generate_ddf_scheduled_obs(season_frac=season_frac)
+def ddf_surveys(detailers=None, ddf_file='ddf_1.npz', season_frac=0.2, pad=0):
+    obs_array = generate_ddf_scheduled_obs(season_frac=season_frac, alt_min=25+pad, alt_max=85-pad)
     #data = np.load(ddf_file)
     #obs_array = data['obs_array'].copy()
     survey = Scripted_survey([], detailers=detailers)
@@ -523,7 +523,10 @@ if __name__ == "__main__":
                dither_detailer, u_detailer]
     euclid_detailers = [detailers.Camera_rot_detailer(min_rot=-camera_ddf_rot_limit, max_rot=camera_ddf_rot_limit),
                         detailers.Euclid_dither_detailer(), u_detailer]
-    ddfs = ddf_surveys(detailers=details, season_frac=ddf_season_frac)
+    # Need to increase alt limits because dithers can be so large now.
+    if max_dither >= 1.:
+        pad = max_dither
+    ddfs = ddf_surveys(detailers=details, season_frac=ddf_season_frac, pad=pad)
 
     greedy = gen_greedy_surveys(nside, nexp=nexp, footprints=footprints)
 
