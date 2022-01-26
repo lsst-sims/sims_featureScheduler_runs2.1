@@ -5,25 +5,28 @@ from rubin_sim.data import get_data_dir
 from astropy.coordinates import SkyCoord, ICRS, Galactic
 from astropy import units as u
 
+
 class gal_plane_pencilbeams_generator(Sky_area_generator):
 
+    def set_params(self, field_selection=1):
+        self.field_selection = field_selection
+
     def add_gal_plane_pencilbeams(self, filter_ratios, radius=6.0,
-                            label='gal_plane_pencilbeams',
-                            field_selection=1):
+                            label='gal_plane_pencilbeams'):
 
         temp_map = np.zeros(hp.nside2npix(self.nside))
 
         # Load list of field centers of pencilbeam fields across the Galactic Plane.
         # Option 1 corresponds to 20 smaller fields
         # Option 2 corresponds to 4 larger fields
-        pencilbeams_list = self.load_pencilbeam_fields(field_selection)
+        pencilbeams_list = self.load_pencilbeam_fields(self.field_selection)
 
         # Generate the map regions from the pencilbeam pointings, using
         # the field radii given in degrees:
         for field in pencilbeams_list:
             pointing = SkyCoord(field['l_center'], field['b_center'], frame=Galactic, unit=(u.deg, u.deg))
             pointing = pointing.transform_to(ICRS)
-            temp_map += self._set_circular_region(pointing.ra, pointing.dec, field['radius'])
+            temp_map += self._set_circular_region(pointing.ra.deg, pointing.dec.deg, field['radius'])
 
         # Ensure designated pixels are not overriden:
         indx = np.where((temp_map > 0) & (self.pix_labels == ""))

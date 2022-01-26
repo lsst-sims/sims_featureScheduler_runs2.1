@@ -5,10 +5,14 @@ import numpy as np
 from rubin_sim.data import get_data_dir
 from astropy.io import fits
 
+
 class gal_plane_footprint_generator(Sky_area_generator):
 
-    def add_gal_plane_region(self, filter_ratios, label='gal_plane',
-                            priority_threshold=0.6, pencilbeams='small'):
+    def set_params(self, priority_threshold=0.6, pencilbeams=True):
+        self.priority_threshold = priority_threshold
+        self.pencilbeams_small = pencilbeams
+
+    def add_gal_plane_region(self, filter_ratios, label='gal_plane'):
         """Method to create a map region from pre-calculated maps of desired
         survey regions in the Galactic Plane.
 
@@ -28,23 +32,20 @@ class gal_plane_footprint_generator(Sky_area_generator):
         # and labels pixels according to survey region in a filter-agnostic way,
         # we use the i-band priority map to define the survey region.
         self.MAP_DIR = get_data_dir()
-        if pencilbeams == 'small':
+        if self.pencilbeams_small:
             self.MAP_FILE_ROOT_NAME = "priority_GalPlane_footprint_map_data_i.fits"
         else:
             self.MAP_FILE_ROOT_NAME = "priority_GalPlane_footprint_alt_map_data_i.fits"
 
-        file_path = os.path.join(
-            self.MAP_DIR,
-            "maf",
-            self.MAP_FILE_ROOT_NAME
-            )
+        file_path = self.MAP_FILE_ROOT_NAME
+            
         map_data_table = self.load_map_data(file_path)
 
         # The priority threshold corresponds to a threshold in stellar density,
         # which is used to identify the HEALpixels of interest for the survey
         # region.
         temp_map = np.zeros(len(map_data_table['combined_map']))
-        survey_region_pixels = np.where(map_data_table['combined_map'] >= priority_threshold)[0]
+        survey_region_pixels = np.where(map_data_table['combined_map'] >= self.priority_threshold)[0]
         temp_map[survey_region_pixels] = 1.0
 
         # Resample temp_map to ensure that it matches the NSIDE parameter
