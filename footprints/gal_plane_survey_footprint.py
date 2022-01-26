@@ -1,95 +1,73 @@
+import os
 from rubin_sim.scheduler.utils import Sky_area_generator
 import healpy as hp
 import numpy as np
 from rubin_sim.data import get_data_dir
-
+from astropy.io import fits
 
 class gal_plane_footprint_generator(Sky_area_generator):
 
-    def add_gal_plane_region(self, filter_ratios, radius=6.0, label='gal_plane',
-                            priority_threshold=0.8):
+    def add_gal_plane_region(self, filter_ratios, label='gal_plane',
+                            priority_threshold=0.6, pencilbeams='small'):
+        """Method to create a map region from pre-calculated maps of desired
+        survey regions in the Galactic Plane.
 
-        # This dictionary defines as keys a set of relative priority of pixels
-        # corresponding to thresholds in stellar density; this is used to
-        # select smaller (inc. lower priority pixels) or larger (inc. higher
-        # priority pixels) survey regions
-        priority_thresholds = { 0.8: 0.60, 0.9: 0.70, 1.0: 0.80 }
-        density_threshold[priority_threshold]
+        The maps indicate the relative priority of each HEALpix across the sky.
+        This can be used to vary the selected survey region by decreasing the
+        priority_threshold parameter (thereby selecting a larger region) or
+        conversely by increasing it (limiting the survey to a smaller region).
+        priority_threshold values between 0.3 - map.max() (~1.5) are recommended.
 
-        # Load the data on stellar density as a function of sky position.
-        # NOTE: These data are unavoidably in NSIDE=64
-        star_density_map = self.load_star_density_data(limiting_mag=24.7)
-        hp_star_density = self.rotateHealpix(star_density_map)
-        idx = hp_star_density > 0.0
-        hp_log_star_density = np.zeros(len(hp_star_density))
-        hp_log_star_density[idx] = np.log10(hp_star_density[idx])
+        Two alternative maps are available.  The default ('small' pencilbeams)
+        includes 20 single-pointing pencilbeam fields distributed across the
+        Galactic Plane.  The alternative  ('alt' pencilbeams) map includes 4
+        larger pencilbeam fields at selected locations towards the galactic arms.
+        """
+
+        # Since this method is designed to outline the survey region footprint,
+        # and labels pixels according to survey region in a filter-agnostic way,
+        # we use the i-band priority map to define the survey region.
+        self.MAP_DIR = get_data_dir()
+        if pencilbeams == 'small':
+            self.MAP_FILE_ROOT_NAME = "priority_GalPlane_footprint_map_data_i.fits"
+        else:
+            self.MAP_FILE_ROOT_NAME = "priority_GalPlane_footprint_alt_map_data_i.fits"
+
+        file_path = os.path.join(
+            self.MAP_DIR,
+            "maf",
+            self.MAP_FILE_ROOT_NAME
+            )
+        map_data_table = self.load_map_data(file_path)
 
         # The priority threshold corresponds to a threshold in stellar density,
         # which is used to identify the HEALpixels of interest for the survey
         # region.
-        temp_map = np.zeros(len(hp_log_star_density))
-        survey_region_pixels = np.where(hp_log_star_density >= density_threshold*hp_log_star_density.max())[0]
+        temp_map = np.zeros(len(map_data_table['combined_map']))
+        survey_region_pixels = np.where(map_data_table['combined_map'] >= priority_threshold)[0]
         temp_map[survey_region_pixels] = 1.0
 
         # Resample temp_map to ensure that it matches the NSIDE parameter
         # being used for the current simulation:
         resampled_map = hp.ud_grade(temp_map, self.nside)
 
-        # Ensure designated pixels are not overriden:
+        # Ensure designated pixels are not overriden
+        # NOTE: Labeling pixels independently of the filter selection
+        # implicitly assumes that the survey footprint is the same in all
+        # filters.  This does not necessarily hold true for all regions in
+        # the Galactic Plane
         indx = np.where((resampled_map > 0) & (self.pix_labels == ""))
         self.pix_labels[indx] = label
+
         for filtername in filter_ratios.keys():
             self.healmaps[filtername][indx] = filter_ratios[filtername]
 
-    def load_star_density_data(limiting_mag=28.0):
+    def load_map_data(self,file_path):
 
-        MAP_DATA_DIR = get_data_dir()
-        data_file = path.join(MAP_DATA_DIR, 'TRIstarDensity_r_nside_64.npz')
+        with fits.open(file_path) as hdul:
+            map_data_table = hdul[1].data
 
-        if path.isfile(data_file):
-            npz_file = np.load(data_file)
-            with np.load(data_file) as npz_file:
-                star_map = npz_file['starDensity']
-                mag_bins = npz_file['bins']
-
-                dmag = abs(mag_bins - limiting_mag)
-                idx = np.where(dmag == dmag.min())[0]
-
-                star_density_map = np.copy(star_map[:,idx]).flatten()
-                star_density_map = hp.reorder(star_density_map, n2r=True)
-
-            return star_density_map
-
-        else:
-            raise IOError('Cannot find star density map data file at '+data_file)
-
-        return None
-
-    def rotateHealpix(hpmap, transf=['C','G'], phideg=0., thetadeg=0.):
-        """Rotates healpix map from one system to the other. Returns reordered healpy map.
-        Healpy coord transformations are used, or you can specify your own angles in degrees.
-        To specify your own angles, ensure that transf has length != 2.
-        Original code by Xiaolong Li
-        """
-
-        nside = hp.npix2nside(len(hpmap))
-
-        # Get theta, phi for non-rotated map
-        t,p = hp.pix2ang(nside, np.arange(hp.nside2npix(nside)))
-
-        # Define a rotator
-        if len(transf) == 2:
-            r = hp.Rotator(coord=transf)
-        else:
-            r = hp.Rotator(deg=True, rot=[phideg,thetadeg])
-
-        # Get theta, phi under rotated co-ordinates
-        trot, prot = r(t,p)
-
-        # Interpolate map onto these co-ordinates
-        rot_map = hp.get_interp_val(hpmap, trot, prot)
-
-        return rot_map
+        return map_data_table
 
     def return_maps(
         self,
@@ -101,7 +79,7 @@ class gal_plane_footprint_generator(Sky_area_generator):
         bulge_ratios={"u": 0.18, "g": 1.0, "r": 1.05, "i": 1.05, "z": 1.0, "y": 0.23},
         virgo_ratios={"u": 0.32, "g": 0.4, "r": 1.0, "i": 1.0, "z": 0.9, "y": 0.9},
 
-        gal_plane = {"u": 0.18, "g": 1.0, "r": 1.05, "i": 1.05, "z": 1.0, "y": 0.23},
+        gal_plane_ratios = {"u": 0.18, "g": 1.0, "r": 1.05, "i": 1.05, "z": 1.0, "y": 0.23},
         ):
         # Array to hold the labels for each pixel
         self.pix_labels = np.zeros(hp.nside2npix(self.nside), dtype="U20")
@@ -112,7 +90,7 @@ class gal_plane_footprint_generator(Sky_area_generator):
 
         # Note, order here matters. Once a HEALpix is set and labled, subsequent add_ methods
         # will not override that pixel.
-        self.add_gal_plane_region(self, filter_ratios)
+        self.add_gal_plane_region(gal_plane_ratios)
 
         self.add_magellanic_clouds(magellenic_clouds_ratios)
         self.add_lowdust_wfd(low_dust_ratios)
