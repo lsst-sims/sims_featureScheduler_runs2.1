@@ -483,7 +483,7 @@ if __name__ == "__main__":
         fileroot = os.path.basename(sys.argv[0]).replace('.py', '') + '_'
     else:
         fileroot = dbroot + '_'
-    file_end = 'v2.1_'
+    file_end = 'fs%i_' % field_selection + 'v2.1_'
 
     sm = gal_plane_pencilbeams_generator(nside=nside)
     sm.set_params(field_selection=field_selection)
