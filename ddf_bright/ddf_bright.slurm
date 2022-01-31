@@ -54,4 +54,4 @@ cd /gscratch/scrubbed/yoachim/sims_featureScheduler_runs2.1/ddf_bright
 ## run all the baseline commands in parallel
 module load parallel-20170722
 
-cat run_ddf_bright.sh | parallel -j 20
+cat run_bright.sh | parallel -j 20
