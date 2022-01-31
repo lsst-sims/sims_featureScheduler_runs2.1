@@ -70,7 +70,8 @@ def gen_greedy_surveys(nside=32, nexp=2, exptime=30., filters=['r', 'i', 'z', 'y
                            'survey_name': 'greedy'}
 
     surveys = []
-    detailer = detailers.Camera_rot_detailer(min_rot=np.min(camera_rot_limits), max_rot=np.max(camera_rot_limits))
+    detailer_list = [detailers.Camera_rot_detailer(min_rot=np.min(camera_rot_limits), max_rot=np.max(camera_rot_limits))]
+    detailer_list.append(detailers.Rottep2Rotsp_desired_detailer())
 
     for filtername in filters:
         bfs = []
@@ -92,7 +93,7 @@ def gen_greedy_surveys(nside=32, nexp=2, exptime=30., filters=['r', 'i', 'z', 'y
         basis_functions = [val[0] for val in bfs]
         surveys.append(Greedy_survey(basis_functions, weights, exptime=exptime, filtername=filtername,
                                      nside=nside, ignore_obs=ignore_obs, nexp=nexp,
-                                     detailers=[detailer], **greed_survey_params))
+                                     detailers=detailer_list, **greed_survey_params))
 
     return surveys
 
@@ -170,6 +171,7 @@ def generate_blobs(nside, nexp=2, exptime=30., filter1s=['u', 'u', 'g', 'r', 'i'
         detailer_list = []
         detailer_list.append(detailers.Camera_rot_detailer(min_rot=np.min(camera_rot_limits),
                                                            max_rot=np.max(camera_rot_limits)))
+        detailer_list.append(detailers.Rottep2Rotsp_desired_detailer())
         detailer_list.append(detailers.Close_alt_detailer())
         # List to hold tuples of (basis_function_object, weight)
         bfs = []
@@ -334,6 +336,7 @@ def generate_twi_blobs(nside, nexp=2, exptime=30., filter1s=['r', 'i', 'z', 'y']
         detailer_list = []
         detailer_list.append(detailers.Camera_rot_detailer(min_rot=np.min(camera_rot_limits),
                                                            max_rot=np.max(camera_rot_limits)))
+        detailer_list.append(detailers.Rottep2Rotsp_desired_detailer())
         detailer_list.append(detailers.Close_alt_detailer())
         # List to hold tuples of (basis_function_object, weight)
         bfs = []
@@ -524,7 +527,7 @@ if __name__ == "__main__":
     u_detailer = detailers.Filter_nexp(filtername='u', nexp=1)
     dither_detailer = detailers.Dither_detailer(per_night=per_night, max_dither=max_dither)
     details = [detailers.Camera_rot_detailer(min_rot=-camera_ddf_rot_limit, max_rot=camera_ddf_rot_limit),
-               dither_detailer, u_detailer]
+               dither_detailer, u_detailer, detailers.Rottep2Rotsp_desired_detailer()]
     euclid_detailers = [detailers.Camera_rot_detailer(min_rot=-camera_ddf_rot_limit, max_rot=camera_ddf_rot_limit),
                         detailers.Euclid_dither_detailer(), u_detailer]
     ddfs = ddf_surveys(detailers=details, season_frac=ddf_season_frac)
