@@ -30,6 +30,10 @@ Try out rolling cadence on DDFs
 
 Like ddf_quad, but removing almost all of the m5-limit so observations happen in bright time as well.
 
+## ddf_old_rot
+
+Like ddf_season_length, but using the old style of keeping a constant rotTelPos in a night rather than rotSkyPos.
+
 ## footprints
 
 Some new footprints with the galactic plane. Had to set the blob surveys to not force contiguous areas.
