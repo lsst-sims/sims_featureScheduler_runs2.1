@@ -164,7 +164,7 @@ def generate_ddf_scheduled_obs(data_file='ddf_grid.npz', flush_length=2, mjd_tol
     filters = 'ugrizy'
     
     all_scheduled_obs = []
-    for ddf_name in ['ELAISS1', 'XMM_LSS', 'ECDFS', 'COSMOS', 'EDFS_a']:
+    for ddf_name in ['ELAISS1', 'XMM_LSS', 'ECDFS', 'COSMOS', 'RANDO']:
         print('Optimizing %s' % ddf_name)
 
         # 'ID', 'RA', 'dec', 'mjd', 'flush_by_mjd', 'exptime', 'filter', 'rotSkyPos', 'nexp',
