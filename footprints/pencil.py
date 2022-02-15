@@ -160,7 +160,7 @@ def generate_blobs(nside, nexp=2, exptime=30., filter1s=['u', 'u', 'g', 'r', 'i'
 
     blob_survey_params = {'slew_approx': 7.5, 'filter_change_approx': 140.,
                           'read_approx': 2., 'min_pair_time': 15., 'search_radius': 30.,
-                          'alt_max': 85., 'az_range': 90., 'flush_time': 30.,
+                          'alt_max': 85., 'az_range': 270., 'flush_time': 30.,
                           'smoothing_kernel': None, 'nside': nside, 'seed': 42, 'dither': True,
                           'twilight_scale': True, 'grow_blob': False}
 
@@ -325,7 +325,7 @@ def generate_twi_blobs(nside, nexp=2, exptime=30., filter1s=['r', 'i', 'z', 'y']
 
     blob_survey_params = {'slew_approx': 7.5, 'filter_change_approx': 140.,
                           'read_approx': 2., 'min_pair_time': 10., 'search_radius': 30.,
-                          'alt_max': 85., 'az_range': 90., 'flush_time': 30.,
+                          'alt_max': 85., 'az_range': 270., 'flush_time': 30.,
                           'smoothing_kernel': None, 'nside': nside, 'seed': 42, 'dither': True,
                           'twilight_scale': False, 'in_twilight': True, 'grow_blob': False}
 
