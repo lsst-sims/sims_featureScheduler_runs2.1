@@ -53,5 +53,6 @@ cd /gscratch/scrubbed/yoachim/sims_featureScheduler_runs2.1/footprints
 
 ## run all the baseline commands in parallel
 module load parallel-20170722
+cat run_pen.sh | parallel -j 20
 
-cat run_footprints.sh | parallel -j 20
+# cat run_footprints.sh | parallel -j 20
