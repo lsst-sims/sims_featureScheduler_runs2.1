@@ -2,7 +2,7 @@
 
 ## Job Name
 
-#SBATCH --job-name=maf2_2.1
+#SBATCH --job-name=solarsystem2_2.1
 
 ## Allocation Definition
 
