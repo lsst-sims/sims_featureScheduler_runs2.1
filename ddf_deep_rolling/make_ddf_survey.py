@@ -167,6 +167,7 @@ def generate_ddf_scheduled_obs(data_file='ddf_grid.npz', flush_length=2, mjd_tol
     # Set some times to truncate the solution for
     time_limits = {}
 
+    # XXX--update this to be defined by seasons
     time_limits['COSMOS'] = [61157.3, 61887.8]
     time_limits['XMM_LSS'] = [61157, 61887]
     time_limits['ELAISS1'] = [60400.2, 61130.7]
@@ -214,6 +215,8 @@ def generate_ddf_scheduled_obs(data_file='ddf_grid.npz', flush_length=2, mjd_tol
         mjds = optimize_ddf_times(ddf_name, ddfs[ddf_name][0], ddf_grid,
                                   season_frac=season_frac,
                                   sequence_limit=sequence_limit)[0]
+        mjds = np.array(mjds)
+        mjds = mjds[np.where((mjds >= np.min(time_limits[ddf_name])) & (mjds <= np.max(time_limits[ddf_name])))[0]]
         for mjd in mjds:
             for filtername, nvis, nexp in zip(filters, nvis_master, nsnaps):
                 if 'EDFS' in ddf_name:
