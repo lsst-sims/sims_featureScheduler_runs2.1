@@ -145,7 +145,7 @@ def generate_ddf_scheduled_obs(data_file='ddf_grid.npz', flush_length=2, mjd_tol
                                alt_min=25, alt_max=85, HA_min=21., HA_max=3.,
                                dist_tol=3., season_frac=0.1,
                                low_season_frac=0.4, low_season_rate=0.3,
-                               nvis_master=None,
+                               nvis_master1=None, nvis_master2=None,
                                nsnaps=[1, 2, 2, 2, 2, 2], sequence_limit=286):
 
     flush_length = flush_length  # days
@@ -170,11 +170,9 @@ def generate_ddf_scheduled_obs(data_file='ddf_grid.npz', flush_length=2, mjd_tol
     seasons = {}
     seasons['COSMOS'] = [1, 2]
     seasons['XMM_LSS'] = [3, 4]
-    seasons['EDFS_a'] = [5, 6]
-    seasons['ELAISS1'] = [7, 8]
-    seasons['ECDFS'] = [8, 9]
+    seasons['EDFS_a'] = [5, 8]
 
-    for name in ['COSMOS', 'XMM_LSS', 'EDFS_a', 'ELAISS1', 'ECDFS']:
+    for name in ['COSMOS', 'XMM_LSS', 'EDFS_a']:
         season = np.floor(calcSeason(ddfs[name][0], ddf_grid['mjd']))
         season = season - np.min(season)
         min_indx = np.min(np.where(season == np.min(seasons[name]))[0])
@@ -182,10 +180,7 @@ def generate_ddf_scheduled_obs(data_file='ddf_grid.npz', flush_length=2, mjd_tol
 
         time_limits[name] = [ddf_grid['mjd'][min_indx], ddf_grid['mjd'][max_indx]]
 
-    import pdb ; pdb.set_trace()
-
     for ddf_name in ['XMM_LSS', 'COSMOS']:
-        nvis_master = [2, 2, 9, 26, 35, 16]
         print('Optimizing %s' % ddf_name)
         # 'ID', 'RA', 'dec', 'mjd', 'flush_by_mjd', 'exptime', 'filter', 'rotSkyPos', 'nexp',
         #         'note'
@@ -196,7 +191,7 @@ def generate_ddf_scheduled_obs(data_file='ddf_grid.npz', flush_length=2, mjd_tol
         mjds = np.array(mjds)
         mjds = mjds[np.where((mjds >= np.min(time_limits[ddf_name])) & (mjds <= np.max(time_limits[ddf_name])))[0]]
         for mjd in mjds:
-            for filtername, nvis, nexp in zip(filters, nvis_master, nsnaps):
+            for filtername, nvis, nexp in zip(filters, nvis_master1, nsnaps):
                 obs = scheduled_observation(n=nvis)
                 obs['RA'] = np.radians(ddfs[ddf_name][0])
                 obs['dec'] = np.radians(ddfs[ddf_name][1])
@@ -216,8 +211,7 @@ def generate_ddf_scheduled_obs(data_file='ddf_grid.npz', flush_length=2, mjd_tol
                 obs['alt_max'] = alt_max
                 all_scheduled_obs.append(obs)
 
-    for ddf_name in ['ELAISS1', 'ECDFS', 'EDFS_a']:
-        nvis_master = [2, 2, 9, 10, 15, 3]
+    for ddf_name in ['EDFS_a']:
         print('Optimizing %s' % ddf_name)
         # 'ID', 'RA', 'dec', 'mjd', 'flush_by_mjd', 'exptime', 'filter', 'rotSkyPos', 'nexp',
         #         'note'
@@ -228,7 +222,7 @@ def generate_ddf_scheduled_obs(data_file='ddf_grid.npz', flush_length=2, mjd_tol
         mjds = np.array(mjds)
         mjds = mjds[np.where((mjds >= np.min(time_limits[ddf_name])) & (mjds <= np.max(time_limits[ddf_name])))[0]]
         for mjd in mjds:
-            for filtername, nvis, nexp in zip(filters, nvis_master, nsnaps):
+            for filtername, nvis, nexp in zip(filters, nvis_master2, nsnaps):
                 if 'EDFS' in ddf_name:
                     obs = scheduled_observation(n=int(nvis/2))
                     obs['RA'] = np.radians(ddfs[ddf_name][0])
