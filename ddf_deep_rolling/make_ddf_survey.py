@@ -182,8 +182,6 @@ def generate_ddf_scheduled_obs(data_file='ddf_grid.npz', flush_length=2, mjd_tol
 
         time_limits[name] = [ddf_grid['mjd'][min_indx], ddf_grid['mjd'][max_indx]]
 
-    import pdb ; pdb.set_trace()
-
     for ddf_name in ['XMM_LSS', 'COSMOS']:
         nvis_master = [2, 2, 9, 26, 35, 16]
         print('Optimizing %s' % ddf_name)
