@@ -55,6 +55,6 @@ cd /gscratch/scrubbed/yoachim/sims_featureScheduler_runs2.1/maf
 module load parallel-20170722
 
 generate_ss
-cat ss_script.sh | parallel -j 112
+cat ss_script.sh | parallel -j 168
 #cat sci.sh | parallel -j 28
 
