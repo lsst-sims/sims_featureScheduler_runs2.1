@@ -46,6 +46,9 @@
 #SBATCH --export=all
 
 ## Set up the evironment
+
+export OPENBLAS_NUM_THREADS=1
+
 source ~/anaconda3/etc/profile.d/conda.sh
 conda activate guro
 
