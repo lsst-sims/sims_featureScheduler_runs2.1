@@ -452,7 +452,7 @@ if __name__ == "__main__":
     parser.add_argument("--rolling_strength", type=float, default=0.9)
     parser.add_argument("--dbroot", type=str)
     parser.add_argument("--gsw", type=float, default=3.0)
-    parser.add_argument("--repeat_weight", type=float, default=-1.)
+    parser.add_argument("--repeat_weight", type=float, default=1.)
 
     args = parser.parse_args()
     survey_length = args.survey_length  # Days
@@ -465,7 +465,7 @@ if __name__ == "__main__":
     scale = args.rolling_strength
     dbroot = args.dbroot
     gsw = args.gsw
-    repeat_weight = args.repeat_weight
+    repeat_weight = -1.*args.repeat_weight
 
     nside = 32
     per_night = True  # Dither DDF per night
