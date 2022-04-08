@@ -1,0 +1,12 @@
+scimaf_dir --db no_repeat_rpw-100.0_v2.1_10yrs.db
+scimaf_dir --db no_repeat_rpw-10.0_v2.1_10yrs.db
+scimaf_dir --db no_repeat_rpw-1.0_v2.1_10yrs.db
+scimaf_dir --db no_repeat_rpw-20.0_v2.1_10yrs.db
+scimaf_dir --db no_repeat_rpw-2.0_v2.1_10yrs.db
+scimaf_dir --db no_repeat_rpw-5.0_v2.1_10yrs.db
+glance_dir --db no_repeat_rpw-100.0_v2.1_10yrs.db
+glance_dir --db no_repeat_rpw-10.0_v2.1_10yrs.db
+glance_dir --db no_repeat_rpw-1.0_v2.1_10yrs.db
+glance_dir --db no_repeat_rpw-20.0_v2.1_10yrs.db
+glance_dir --db no_repeat_rpw-2.0_v2.1_10yrs.db
+glance_dir --db no_repeat_rpw-5.0_v2.1_10yrs.db
