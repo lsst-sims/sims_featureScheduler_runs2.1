@@ -49,6 +49,8 @@
 source ~/anaconda3/etc/profile.d/conda.sh
 conda activate guro
 
+export OPENBLAS_NUM_THREADS=1
+
 cd /gscratch/scrubbed/yoachim/sims_featureScheduler_runs2.1/maf2
 
 ## run all the baseline commands in parallel
