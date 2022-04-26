@@ -278,7 +278,7 @@ def generate_twi_blobs(nside, nexp=2, exptime=30., filter1s=['r', 'i', 'z', 'y']
                        shadow_minutes=60., max_alt=76., moon_distance=30., ignore_obs=['DD', 'twilight_neo'],
                        m5_weight=6., footprint_weight=1.5, slewtime_weight=3.,
                        stayfilter_weight=3., template_weight=12., footprints=None, repeat_night_weight=None,
-                       wfd_footprint=None, scheduled_respect=15.):
+                       wfd_footprint=None, scheduled_respect=15., night_pattern=None):
     """
     Generate surveys that take observations in blobs.
 
@@ -402,6 +402,10 @@ def generate_twi_blobs(nside, nexp=2, exptime=30., filter1s=['r', 'i', 'z', 'y']
         bfs.append((bf.Time_to_twilight_basis_function(time_needed=time_needed, alt_limit=12), 0.))
         bfs.append((bf.Planet_mask_basis_function(nside=nside), 0.))
 
+        # Let's turn off twilight blobs on nights where we are 
+        # doing NEO hunts
+        bfs.append((bf.Night_modulo_basis_function(pattern=night_pattern), 0))
+
         # unpack the basis functions and weights
         weights = [val[1] for val in bfs]
         basis_functions = [val[0] for val in bfs]
@@ -488,7 +492,7 @@ def generate_twilight_neo(nside, night_pattern=None, nexp=1, exptime=15,
         bfs.append((bf.Planet_mask_basis_function(nside=nside), 0))
         bfs.append((bf.Solar_elongation_mask_basis_function(min_elong=0., max_elong=60., nside=nside), 0))
 
-        bfs.append((bf.Sun_alt_limit_basis_function(), 0))
+        bfs.append((bf.Sun_alt_limit_basis_function(alt_limit=-15), 0))
         bfs.append((bf.Time_in_twilight_basis_function(time_needed=time_needed), 0))
         bfs.append((bf.Night_modulo_basis_function(pattern=night_pattern), 0))
 
@@ -606,7 +610,7 @@ if __name__ == "__main__":
     twi_blobs = generate_twi_blobs(nside, nexp=nexp,
                                    footprints=footprints,
                                    wfd_footprint=wfd_footprint,
-                                   repeat_night_weight=repeat_night_weight)
+                                   repeat_night_weight=repeat_night_weight, night_pattern=reverse_night_pattern)
     surveys = [ddfs, blobs, twi_blobs, neo, greedy]
     run_sched(surveys, survey_length=survey_length, verbose=verbose,
               fileroot=os.path.join(outDir, fileroot+file_end), extra_info=extra_info,

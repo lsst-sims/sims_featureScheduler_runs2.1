@@ -2,7 +2,7 @@
 
 ## Job Name
 
-#SBATCH --job-name=baseline2.1
+#SBATCH --job-name=twi_2.1
 
 ## Allocation Definition
 
@@ -15,7 +15,7 @@
 ## Nodes
 
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=20
+#SBATCH --ntasks-per-node=28
 
 ## Walltime (hours:min:sec) Do not specify a walltime substantially more than your job needs.
 
@@ -33,7 +33,7 @@
 
 ## Specify the working directory for this job
 
-#SBATCH --chdir=/gscratch/scrubbed/yoachim/sims_featureScheduler_runs2.1/baseline
+#SBATCH --chdir=/gscratch/scrubbed/yoachim/sims_featureScheduler_runs2.1/technical/twi_neo
 
 ##turn on e-mail notification
 
@@ -50,10 +50,10 @@ source ~/anaconda3/etc/profile.d/conda.sh
 conda activate guro
 export OPENBLAS_NUM_THREADS=1
 
-cd /gscratch/scrubbed/yoachim/sims_featureScheduler_runs2.1/baseline
+cd /gscratch/scrubbed/yoachim/sims_featureScheduler_runs2.1/technical/twi_neo
 
 ## run all the baseline commands in parallel
 module load parallel-20170722
 
-python baseline.py
-#cat baseline.sh | parallel -j 20
+
+cat twi_neo.sh | parallel -j 28
