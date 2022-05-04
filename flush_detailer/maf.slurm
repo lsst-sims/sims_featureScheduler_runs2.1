@@ -55,9 +55,12 @@ cd /gscratch/scrubbed/yoachim/sims_featureScheduler_runs2.1/flush_detailer
 ## run all the baseline commands in parallel
 module load parallel-20170722
 
-generate_ss
-cat ss_script.sh > maf.sh
-echo "glance_dir" >> maf.sh
-echo "scimaf_dir" >> maf.sh
+#generate_ss
+#cat ss_script.sh > maf.sh
+#echo "glance_dir" >> maf.sh
+#echo "scimaf_dir" >> maf.sh
+
+
+echo "glance_dir" > maf.sh
 cat maf.sh | parallel -j 20
 #cat baseline.sh | parallel -j 20
