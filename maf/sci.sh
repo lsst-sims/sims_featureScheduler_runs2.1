@@ -1,3 +1,4 @@
+scimaf_dir --long_micro --db baseline_v2.1_10yrs.db
 scimaf_dir --long_micro --db ddf_accourd_sf0.05_lsf0.1_lsr0.1_v2.1_10yrs.db
 scimaf_dir --long_micro --db ddf_accourd_sf0.05_lsf0.1_lsr0.3_v2.1_10yrs.db
 scimaf_dir --long_micro --db ddf_accourd_sf0.05_lsf0.1_lsr0.5_v2.1_10yrs.db
