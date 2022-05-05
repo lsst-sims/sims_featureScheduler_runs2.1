@@ -14,8 +14,8 @@
 
 ## Nodes
 
-#SBATCH --nodes=2
-#SBATCH --ntasks-per-node=28
+#SBATCH --nodes=5
+#SBATCH --ntasks-per-node=20
 
 ## Walltime (hours:min:sec) Do not specify a walltime substantially more than your job needs.
 
@@ -55,5 +55,5 @@ cd /gscratch/scrubbed/yoachim/sims_featureScheduler_runs2.1/maf
 module load parallel-20170722
 
 #cat maf.sh | parallel -j 56
-cat sci.sh | parallel -j 56
+cat sci.sh | parallel -j 100
 
