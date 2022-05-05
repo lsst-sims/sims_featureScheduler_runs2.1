@@ -54,6 +54,6 @@ cd /gscratch/scrubbed/yoachim/sims_featureScheduler_runs2.1/maf
 ## run all the baseline commands in parallel
 module load parallel-20170722
 
-cat maf.sh | parallel -j 56
-#cat sci.sh | parallel -j 28
+#cat maf.sh | parallel -j 56
+cat sci.sh | parallel -j 56
 
